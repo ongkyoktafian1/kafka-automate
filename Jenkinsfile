@@ -54,9 +54,10 @@ pipeline {
                         writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import sys
+import json
 
 topic = sys.argv[1]
-messages = sys.argv[2:]
+messages = json.loads(sys.argv[2])
 
 producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092')
 for message in messages:
@@ -64,11 +65,11 @@ for message in messages:
 producer.flush()
 """
 
-                        // Prepare the messages as arguments
-                        def messageList = messages.collect { "'${it}'" }.join(' ')
+                        // Prepare the messages as a JSON string
+                        def messageList = groovy.json.JsonOutput.toJson(messages)
                         
                         // Run the Python script
-                        sh "python kafka_producer.py ${topic} ${messageList}"
+                        sh "python kafka_producer.py ${topic} '${messageList}'"
                     }
                 }
             }
