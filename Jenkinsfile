@@ -34,19 +34,38 @@ pipeline {
             }
         }
 
+        stage('Debug File Timestamps') {
+            steps {
+                container('python') {
+                    script {
+                        def team = params.TEAM
+                        def teamDir = "${team}"
+
+                        // List all files with their timestamps
+                        def fileList = sh(script: "ls -lt ${teamDir}/*.json", returnStdout: true).trim()
+                        echo "Files sorted by modification time:\n${fileList}"
+
+                        // Verify the exact timestamp of each file
+                        def fileTimestamps = sh(script: "stat -c '%y %n' ${teamDir}/*.json", returnStdout: true).trim()
+                        echo "File timestamps:\n${fileTimestamps}"
+                    }
+                }
+            }
+        }
+
         stage('Publish Messages to Kafka') {
             steps {
                 container('python') {
                     script {
                         def team = params.TEAM
                         def teamDir = "${team}"
-                        
+
                         // Find the latest JSON file in the team's directory
                         def latestFile = sh(script: "ls -t ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
                         
                         echo "Latest file to be processed: ${latestFile}"
 
-                        // Read the content of the latest JSON file
+                        // Read the content of the latest file
                         def config = readFile(file: latestFile)
                         echo "Content of the latest file: ${config}"
 
