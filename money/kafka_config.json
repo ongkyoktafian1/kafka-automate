@@ -1,4 +1,9 @@
 {
     "topic": "testing_devops",
-    "message": "testing money"
-}
+    "messages": [
+      "Message 1",
+      "Message 2",
+      "Message 3"
+    ]
+  }
+  
