@@ -12,7 +12,7 @@ pipeline {
                 - sh
                 - -c
                 - |
-                  apk add --no-cache tzdata
+                  apt-get update && apt-get install -y git tzdata
                   cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
                   echo "Asia/Jakarta" > /etc/timezone
                   exec cat
@@ -34,7 +34,7 @@ pipeline {
                 script {
                     git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
                     // Get the latest file based on commit timestamp
-                    def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ai {}\" {} | sort | tail -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
+                    def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ct {}\" {} | sort -nr | head -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
                     echo "Latest file from GitHub: ${latestFile}"
                     // Store the latest file path in an environment variable
                     env.LATEST_FILE = latestFile
@@ -49,25 +49,6 @@ pipeline {
                 }
             }
         }
-
-        // stage('Debug File Timestamps') {
-        //     steps {
-        //         container('python') {
-        //             script {
-        //                 def team = params.TEAM
-        //                 def teamDir = "${team}"
-
-        //                 // List all files with their modification time (mtime)
-        //                 def fileList = sh(script: "ls -lt ${teamDir}/*.json", returnStdout: true).trim()
-        //                 echo "Files sorted by modification time:\n${fileList}"
-
-        //                 // Verify the exact modification time (mtime) of each file
-        //                 def fileTimestamps = sh(script: "stat -c '%y %n' ${teamDir}/*.json", returnStdout: true).trim()
-        //                 echo "File modification times:\n${fileTimestamps}"
-        //             }
-        //         }
-        //     }
-        // }
 
         stage('Publish Messages to Kafka') {
             steps {
