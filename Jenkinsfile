@@ -39,12 +39,18 @@ pipeline {
                 container('python') {
                     script {
                         def team = params.TEAM
-                        def configPath = "${team}/kafka_config.json"
-                        def config = readFile(file: configPath)
+                        def teamDir = "${team}"
+                        
+                        // Find the latest JSON file in the team's directory
+                        def latestFile = sh(script: "ls -t ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
+                        
+                        // Read and parse the latest JSON file
+                        def config = readFile(file: latestFile)
                         def configData = readJSON text: config
                         def topic = configData.topic
                         def messages = configData.messages
 
+                        // Create the Python script
                         writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import sys
@@ -58,7 +64,10 @@ for message in messages:
 producer.flush()
 """
 
+                        // Prepare the messages as arguments
                         def messageList = messages.collect { "'${it}'" }.join(' ')
+                        
+                        // Run the Python script
                         sh "python kafka_producer.py ${topic} ${messageList}"
                     }
                 }
