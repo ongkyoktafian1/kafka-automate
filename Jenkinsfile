@@ -9,8 +9,17 @@ pipeline {
               - name: python
                 image: python:3.9-slim
                 command:
-                - cat
+                - sh
+                - -c
+                - |
+                  apk add --no-cache tzdata
+                  cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+                  echo "Asia/Jakarta" > /etc/timezone
+                  exec cat
                 tty: true
+                env:
+                - name: TZ
+                  value: "Asia/Jakarta"
             """
         }
     }
