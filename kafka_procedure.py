@@ -13,7 +13,7 @@ message = sys.argv[2]
 
 # Configure the producer
 producer = KafkaProducer(
-    bootstrap_servers='your.kafka.broker:9092',
+    bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092',
     value_serializer=lambda v: json.dumps(v).encode('utf-8')
 )
 
