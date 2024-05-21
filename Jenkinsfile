@@ -32,10 +32,15 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone the repository
-                    sh "git clone --depth 1 https://github.com/ongkyoktafian1/kafka-automate.git"
-                    // Copy the cloned files with preserved timestamps
-                    sh "cp -pR kafka-automate/* ."
+                    // Clone the repository and preserve timestamps
+                    try {
+                        sh "git clone --depth 1 https://github.com/ongkyoktafian1/kafka-automate.git"
+                        sh "rsync -av --ignore-existing --update kafka-automate/* ."
+                    } catch (Exception e) {
+                        echo "Error: ${e.getMessage()}"
+                        currentBuild.result = 'FAILURE'
+                        error('Failed to clone repository or copy files')
+                    }
                 }
             }
         }
