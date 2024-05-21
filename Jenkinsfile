@@ -32,15 +32,10 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone the repository with preserved timestamps
-                    sh "git clone --depth 1 --no-checkout --preserve-metadata=timestamp https://github.com/ongkyoktafian1/kafka-automate.git"
-                    // Move to the repository directory
-                    dir("kafka-automate") {
-                        // Fetch the main branch
-                        sh "git fetch origin main"
-                        // Checkout the main branch
-                        sh "git checkout main"
-                    }
+                    // Clone the repository
+                    sh "git clone --depth 1 https://github.com/ongkyoktafian1/kafka-automate.git"
+                    // Copy the cloned files with preserved timestamps
+                    sh "cp -pR kafka-automate/* ."
                 }
             }
         }
