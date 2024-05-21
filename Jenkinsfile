@@ -51,7 +51,7 @@ pipeline {
                         def messages = configData.messages
 
                         // Convert the messages array to a JSON string
-                        def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+                        def messagesJson = groovy.json.JsonOutput.toJson(messages)
 
                         // Write the JSON string to the messages.json file
                         writeFile file: 'messages.json', text: messagesJson
