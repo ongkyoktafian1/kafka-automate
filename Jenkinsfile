@@ -15,6 +15,7 @@ pipeline {
                   apt-get update && apt-get install -y git tzdata
                   cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
                   echo "Asia/Jakarta" > /etc/timezone
+                  git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
                   exec cat
                 tty: true
                 env:
