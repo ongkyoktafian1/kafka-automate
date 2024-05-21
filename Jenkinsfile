@@ -35,14 +35,6 @@ pipeline {
             }
         }
 
-        stage('Configure Git Safe Directory') {
-            steps {
-                container('python') {
-                    sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
-                }
-            }
-        }
-
         stage('Install Dependencies') {
             steps {
                 container('python') {
