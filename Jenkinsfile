@@ -60,6 +60,7 @@ pipeline {
                         writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import json
+import sys
 
 topic = sys.argv[1]
 messages = json.loads(sys.argv[2])
