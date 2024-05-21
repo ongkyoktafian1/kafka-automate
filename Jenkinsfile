@@ -16,9 +16,8 @@ pipeline {
     }
 
     parameters {
-        string(name: 'TOPIC', defaultValue: '', description: '')
-        string(name: 'MESSAGE', defaultValue: '', description: '')
-        string(name: 'KEY', defaultValue: 'null', description: '')
+        string(name: 'TOPIC', defaultValue: '', description: 'Topic Name')
+        text(name: 'MESSAGE', defaultValue: '' , description: 'JSON Message')
     }
 
     stages {
@@ -42,22 +41,21 @@ pipeline {
                     script {
                         def topic = params.TOPIC
                         def message = params.MESSAGE
-                        def key = params.KEY
 
                         writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import sys
+import json
 
 topic = sys.argv[1]
 message = sys.argv[2]
-key = sys.argv[3]
 
-producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092')
-producer.send(topic, key=key.encode('utf-8'), value=message.encode('utf-8'))
+producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+producer.send(topic, value=message)
 producer.flush()
 """
 
-                        sh "python kafka_producer.py ${topic} '${message}' '${key}'"
+                        sh "python kafka_producer.py ${topic} '${message}'"
                     }
                 }
             }
