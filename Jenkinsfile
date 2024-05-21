@@ -44,7 +44,7 @@ pipeline {
                         // Find the latest JSON file in the team's directory
                         def latestFile = sh(script: "ls -t ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
                         
-                        // Read and parse the latest JSON file
+                        // Read the content of the latest JSON file
                         def config = readFile(file: latestFile)
                         def configData = readJSON text: config
                         def topic = configData.topic
@@ -65,11 +65,11 @@ for message in messages:
 producer.flush()
 """
 
-                        // Prepare the messages as a JSON string
-                        def messageList = groovy.json.JsonOutput.toJson(messages)
-                        
+                        // Write the messages to a temporary JSON file
+                        writeFile file: 'messages.json', text: configData.messages
+
                         // Run the Python script
-                        sh "python kafka_producer.py ${topic} '${messageList}'"
+                        sh "python kafka_producer.py ${topic} '$(cat messages.json)'"
                     }
                 }
             }
