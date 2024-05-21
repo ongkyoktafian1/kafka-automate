@@ -31,12 +31,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                script {
-                    git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
-                    // Get the latest file based on commit timestamp
-                    def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ai {}\" {} | sort | tail -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
-                    echo "Latest file from GitHub: ${latestFile}"
-                }
+                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
             }
         }
 
@@ -74,9 +69,10 @@ pipeline {
                         def team = params.TEAM
                         def teamDir = "${team}"
 
-                        // Use the latest file fetched from GitHub
-                        def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ai {}\" {} | sort | tail -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
-                        echo "Latest file from GitHub: ${latestFile}"
+                        // Find the latest JSON file in the team's directory using modification time (mtime)
+                        def latestFile = sh(script: "ls -t ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
+                        
+                        echo "Latest file to be processed: ${latestFile}"
 
                         // Read the content of the latest file
                         def config = readFile(file: latestFile)
