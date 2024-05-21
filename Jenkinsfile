@@ -69,7 +69,7 @@ producer.flush()
                         writeFile file: 'messages.json', text: configData.messages
 
                         // Run the Python script
-                        sh "python kafka_producer.py ${topic} '$(cat messages.json)'"
+                        sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
                     }
                 }
             }
