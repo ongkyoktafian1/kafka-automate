@@ -44,8 +44,12 @@ pipeline {
                         // Find the latest JSON file in the team's directory
                         def latestFile = sh(script: "ls -t ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
                         
+                        echo "Latest file to be processed: ${latestFile}"
+
                         // Read the content of the latest JSON file
                         def config = readFile(file: latestFile)
+                        echo "Content of the latest file: ${config}"
+
                         def configData = readJSON text: config
                         def topic = configData.topic
                         def messages = configData.messages
