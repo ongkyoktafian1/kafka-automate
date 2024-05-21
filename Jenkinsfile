@@ -32,15 +32,10 @@ pipeline {
         stage('Clone Repository') {
             steps {
                 script {
-                    // Clone the repository and preserve timestamps
-                    try {
-                        sh "git clone --depth 1 https://github.com/ongkyoktafian1/kafka-automate.git"
-                        sh "rsync -av --ignore-existing --update kafka-automate/* ."
-                    } catch (Exception e) {
-                        echo "Error: ${e.getMessage()}"
-                        currentBuild.result = 'FAILURE'
-                        error('Failed to clone repository or copy files')
-                    }
+                    git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                    // Get the latest file based on commit timestamp
+                    def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ai {}\" {} | sort | tail -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
+                    echo "Latest file from GitHub: ${latestFile}"
                 }
             }
         }
@@ -79,10 +74,9 @@ pipeline {
                         def team = params.TEAM
                         def teamDir = "${team}"
 
-                        // Find the latest JSON file in the team's directory using modification time (mtime)
-                        def latestFile = sh(script: "ls -t ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
-                        
-                        echo "Latest file to be processed: ${latestFile}"
+                        // Use the latest file fetched from GitHub
+                        def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ai {}\" {} | sort | tail -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
+                        echo "Latest file from GitHub: ${latestFile}"
 
                         // Read the content of the latest file
                         def config = readFile(file: latestFile)
