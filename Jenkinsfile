@@ -34,14 +34,6 @@ pipeline {
             }
         }
 
-        stage('Approve All Script') {
-            steps {
-                script {
-                    approveAllScripts()
-                }
-            }
-        }
-
         stage('Publish Messages to Kafka') {
             steps {
                 container('python') {
@@ -59,7 +51,7 @@ pipeline {
                         def messages = configData.messages
 
                         // Convert the messages array to a JSON string
-                        def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+                        def messagesJson = groovy.json.JsonOutput.toJson(messages)
 
                         // Write the JSON string to the messages.json file
                         writeFile file: 'messages.json', text: messagesJson
@@ -67,6 +59,7 @@ pipeline {
                         // Create the Python script
                         writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
+import sys
 import json
 
 topic = sys.argv[1]
@@ -84,6 +77,12 @@ producer.flush()
                 }
             }
         }
+
+        stage('Approve All Scripts') {
+            steps {
+                approveAllScripts()
+            }
+        }
     }
 
     post {
@@ -97,12 +96,13 @@ producer.flush()
 }
 
 def approveAllScripts() {
-    ScriptApproval scriptApproval = ScriptApproval.get()
-    def hashesToApprove = []
-    scriptApproval.pendingScripts.each {
-        hashesToApprove.add(it.hash)
-    }
-    for (String hash : hashesToApprove) {
-        scriptApproval.approveScript(hash)
-    }
+    sh """
+    curl -X POST https://jenkins.stg.kepo.red//scriptApproval/api/json?pretty=true \
+    --header "Content-Type:application/json" \
+    --data '{
+        "approvalIds": [
+            "all"
+        ]
+    }'
+    """
 }
