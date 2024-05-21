@@ -12,7 +12,7 @@ pipeline {
                 - sh
                 - -c
                 - |
-                  apt-get update && apt-get install -y git tzdata
+                  apk add --no-cache tzdata
                   cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
                   echo "Asia/Jakarta" > /etc/timezone
                   exec cat
@@ -34,10 +34,8 @@ pipeline {
                 script {
                     git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
                     // Get the latest file based on commit timestamp
-                    def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ct {}\" {} | sort -nr | head -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
+                    def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ai {}\" {} | sort | tail -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
                     echo "Latest file from GitHub: ${latestFile}"
-                    // Store the latest file path in an environment variable
-                    env.LATEST_FILE = latestFile
                 }
             }
         }
@@ -50,31 +48,52 @@ pipeline {
             }
         }
 
+        stage('Debug File Timestamps') {
+            steps {
+                container('python') {
+                    script {
+                        def team = params.TEAM
+                        def teamDir = "${team}"
+
+                        // List all files with their modification time (mtime)
+                        def fileList = sh(script: "ls -lt ${teamDir}/*.json", returnStdout: true).trim()
+                        echo "Files sorted by modification time:\n${fileList}"
+
+                        // Verify the exact modification time (mtime) of each file
+                        def fileTimestamps = sh(script: "stat -c '%y %n' ${teamDir}/*.json", returnStdout: true).trim()
+                        echo "File modification times:\n${fileTimestamps}"
+                    }
+                }
+            }
+        }
+
         stage('Publish Messages to Kafka') {
             steps {
                 container('python') {
                     script {
-                        def latestFile = env.LATEST_FILE
-                        echo "Latest file to be processed: ${latestFile}"
+                        def team = params.TEAM
+                        def teamDir = "${team}"
 
-                        // Check if the file exists
-                        if (fileExists(latestFile)) {
-                            // Read the content of the latest file
-                            def config = readFile(file: latestFile)
-                            echo "Content of the latest file: ${config}"
+                        // Use the latest file fetched from GitHub
+                        def latestFile = sh(script: "git ls-files -z | xargs -0 -n1 -I{} -- git log -1 --format=\"%ai {}\" {} | sort | tail -n 1 | cut -d ' ' -f 2-", returnStdout: true).trim()
+                        echo "Latest file from GitHub: ${latestFile}"
 
-                            def configData = readJSON text: config
-                            def topic = configData.topic
-                            def messages = configData.messages
+                        // Read the content of the latest file
+                        def config = readFile(file: latestFile)
+                        echo "Content of the latest file: ${config}"
 
-                            // Convert the messages array to a JSON string
-                            def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+                        def configData = readJSON text: config
+                        def topic = configData.topic
+                        def messages = configData.messages
 
-                            // Write the JSON string to the messages.json file
-                            writeFile file: 'messages.json', text: messagesJson
+                        // Convert the messages array to a JSON string
+                        def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
 
-                            // Create the Python script
-                            writeFile file: 'kafka_producer.py', text: """
+                        // Write the JSON string to the messages.json file
+                        writeFile file: 'messages.json', text: messagesJson
+
+                        // Create the Python script
+                        writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import json
 import sys
@@ -88,11 +107,8 @@ for message in messages:
 producer.flush()
 """
 
-                            // Run the Python script
-                            sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
-                        } else {
-                            error "File not found: ${latestFile}"
-                        }
+                        // Run the Python script
+                        sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
                     }
                 }
             }
