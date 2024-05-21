@@ -42,16 +42,16 @@ pipeline {
                         def topic = params.TOPIC
                         def message = params.MESSAGE
                         writeFile file: 'kafka_producer.py', text: """
-                        from kafka import KafkaProducer
-                        import sys
+from kafka import KafkaProducer
+import sys
 
-                        topic = sys.argv[1]
-                        message = sys.argv[2]
+topic = sys.argv[1]
+message = sys.argv[2]
 
-                        producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092')
-                        producer.send(topic, value=message.encode('utf-8'))
-                        producer.flush()
-                        """
+producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092')
+producer.send(topic, value=message.encode('utf-8'))
+producer.flush()
+"""
                         sh "python kafka_producer.py ${topic} '${message}'"
                     }
                 }
