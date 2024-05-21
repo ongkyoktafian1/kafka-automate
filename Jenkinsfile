@@ -16,8 +16,7 @@ pipeline {
     }
 
     parameters {
-        string(name: 'TOPIC', defaultValue: '', description: 'Topic Name')
-        text(name: 'MESSAGE', defaultValue: '' , description: 'JSON Message')
+        choice(name: 'TEAM', choices: ['money', 'payment', 'core'], description: 'Select the team')
     }
 
     stages {
@@ -39,22 +38,24 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def topic = params.TOPIC
-                        def message = params.MESSAGE
+                        def team = params.TEAM
+                        def configPath = "${team}/kafka_config.json"
+                        def config = readFile(file: configPath)
+                        def configData = readJSON text: config
+                        def topic = configData.topic
+                        def message = configData.message
 
                         writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import sys
-import json
 
 topic = sys.argv[1]
 message = sys.argv[2]
 
-producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
-producer.send(topic, value=message)
+producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092')
+producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
 """
-
                         sh "python kafka_producer.py ${topic} '${message}'"
                     }
                 }
