@@ -12,7 +12,7 @@ pipeline {
                 - sh
                 - -c
                 - |
-                  apk add --no-cache git tzdata
+                  apt-get update && apt-get install -y git tzdata
                   cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
                   echo "Asia/Jakarta" > /etc/timezone
                   exec cat
@@ -31,9 +31,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                script {
-                    git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
-                }
+                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
             }
         }
 
@@ -56,7 +54,7 @@ pipeline {
                         def latestFile = sh(script: """
                             git log -1 --name-only --pretty=format: -- ${teamDir}/*.json | head -n 1
                         """, returnStdout: true).trim()
-                        
+
                         echo "Latest file from GitHub: ${latestFile}"
 
                         // Store the latest file path in an environment variable
