@@ -50,6 +50,12 @@ pipeline {
                         def topic = configData.topic
                         def messages = configData.messages
 
+                        // Convert the messages array to a JSON string
+                        def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+
+                        // Write the JSON string to the messages.json file
+                        writeFile file: 'messages.json', text: messagesJson
+
                         // Create the Python script
                         writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
@@ -64,9 +70,6 @@ for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
 """
-
-                        // Write the messages to a temporary JSON file
-                        writeFile file: 'messages.json', text: configData.messages
 
                         // Run the Python script
                         sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
