@@ -18,7 +18,7 @@ pipeline {
     parameters {
         string(name: 'TOPIC', defaultValue: '', description: '')
         string(name: 'MESSAGE', defaultValue: '', description: '')
-        string(name: 'KEY', defaultValue: '', description: '')
+        string(name: 'KEY', defaultValue: 'null', description: '')
     }
 
     stages {
