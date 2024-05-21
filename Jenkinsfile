@@ -94,15 +94,3 @@ producer.flush()
         }
     }
 }
-
-def approveAllScripts() {
-    sh """
-    curl -X POST https://jenkins.stg.kepo.red//scriptApproval/api/json?pretty=true \
-    --header "Content-Type:application/json" \
-    --data '{
-        "approvalIds": [
-            "all"
-        ]
-    }'
-    """
-}
