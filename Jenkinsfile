@@ -12,7 +12,7 @@ pipeline {
                 - sh
                 - -c
                 - |
-                  apk add --no-cache tzdata
+                  apk add --no-cache git tzdata
                   cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
                   echo "Asia/Jakarta" > /etc/timezone
                   exec cat
@@ -31,7 +31,9 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                script {
+                    git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                }
             }
         }
 
@@ -50,13 +52,15 @@ pipeline {
                         def team = params.TEAM
                         def teamDir = "${team}"
 
-                        // List all files with their modification time (mtime)
-                        def fileList = sh(script: "ls -lt ${teamDir}/*.json", returnStdout: true).trim()
-                        echo "Files sorted by modification time:\n${fileList}"
+                        // Use git log to find the most recently committed file
+                        def latestFile = sh(script: """
+                            git log -1 --name-only --pretty=format: -- ${teamDir}/*.json | head -n 1
+                        """, returnStdout: true).trim()
+                        
+                        echo "Latest file from GitHub: ${latestFile}"
 
-                        // Verify the exact modification time (mtime) of each file
-                        def fileTimestamps = sh(script: "stat -c '%y %n' ${teamDir}/*.json", returnStdout: true).trim()
-                        echo "File modification times:\n${fileTimestamps}"
+                        // Store the latest file path in an environment variable
+                        env.LATEST_FILE = latestFile
                     }
                 }
             }
@@ -66,30 +70,27 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def team = params.TEAM
-                        def teamDir = "${team}"
-
-                        // Find the latest JSON file in the team's directory using modification time (mtime)
-                        def latestFile = sh(script: "ls -t ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
-                        
+                        def latestFile = env.LATEST_FILE
                         echo "Latest file to be processed: ${latestFile}"
 
-                        // Read the content of the latest file
-                        def config = readFile(file: latestFile)
-                        echo "Content of the latest file: ${config}"
+                        // Check if the file exists
+                        if (fileExists(latestFile)) {
+                            // Read the content of the latest file
+                            def config = readFile(file: latestFile)
+                            echo "Content of the latest file: ${config}"
 
-                        def configData = readJSON text: config
-                        def topic = configData.topic
-                        def messages = configData.messages
+                            def configData = readJSON text: config
+                            def topic = configData.topic
+                            def messages = configData.messages
 
-                        // Convert the messages array to a JSON string
-                        def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+                            // Convert the messages array to a JSON string
+                            def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
 
-                        // Write the JSON string to the messages.json file
-                        writeFile file: 'messages.json', text: messagesJson
+                            // Write the JSON string to the messages.json file
+                            writeFile file: 'messages.json', text: messagesJson
 
-                        // Create the Python script
-                        writeFile file: 'kafka_producer.py', text: """
+                            // Create the Python script
+                            writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import json
 import sys
@@ -103,8 +104,11 @@ for message in messages:
 producer.flush()
 """
 
-                        // Run the Python script
-                        sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
+                            // Run the Python script
+                            sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
+                        } else {
+                            error "File not found: ${latestFile}"
+                        }
                     }
                 }
             }
