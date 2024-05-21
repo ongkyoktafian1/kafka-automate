@@ -18,6 +18,7 @@ pipeline {
     parameters {
         string(name: 'TOPIC', defaultValue: '1687512430134', description: 'Kafka topic to publish the message')
         string(name: 'MESSAGE', defaultValue: 'Hello, Kafka!', description: 'Message to publish to Kafka topic')
+        string(name: 'KEY', defaultValue: 'my_key', description: 'Key for the message')
     }
 
     stages {
