@@ -41,13 +41,13 @@ pipeline {
                         def team = params.TEAM
                         def teamDir = "${team}"
 
-                        // List all files with their ctime
-                        def fileList = sh(script: "ls -lt --time=ctime ${teamDir}/*.json", returnStdout: true).trim()
-                        echo "Files sorted by ctime:\n${fileList}"
+                        // List all files with their mtime
+                        def fileList = sh(script: "ls -lt --time=mtime ${teamDir}/*.json", returnStdout: true).trim()
+                        echo "Files sorted by mtime:\n${fileList}"
 
-                        // Verify the exact ctime of each file
-                        def fileTimestamps = sh(script: "stat -c '%z %n' ${teamDir}/*.json", returnStdout: true).trim()
-                        echo "File ctimes:\n${fileTimestamps}"
+                        // Verify the exact mtime of each file
+                        def fileTimestamps = sh(script: "stat -c '%y %n' ${teamDir}/*.json", returnStdout: true).trim()
+                        echo "File mtimes:\n${fileTimestamps}"
                     }
                 }
             }
@@ -60,8 +60,8 @@ pipeline {
                         def team = params.TEAM
                         def teamDir = "${team}"
 
-                        // Find the latest JSON file in the team's directory using ctime
-                        def latestFile = sh(script: "ls -t --time=ctime ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
+                        // Find the latest JSON file in the team's directory using mtime
+                        def latestFile = sh(script: "ls -t --time=mtime ${teamDir}/*.json | head -n 1", returnStdout: true).trim()
                         
                         echo "Latest file to be processed: ${latestFile}"
 
