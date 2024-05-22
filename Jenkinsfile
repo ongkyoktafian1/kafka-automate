@@ -55,6 +55,8 @@ pipeline {
             steps {
                 container('python') {
                     script {
+                        // Ensure the directory exists
+                        sh 'mkdir -p /var/jenkins_home/init.groovy.d'
                         // Copy the approve_all.groovy script to the init.groovy.d directory
                         sh 'cp init.groovy.d/approve_all.groovy /var/jenkins_home/init.groovy.d/approve_all.groovy'
                     }
