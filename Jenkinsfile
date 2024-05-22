@@ -16,6 +16,8 @@ pipeline {
                   cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
                   echo "Asia/Jakarta" > /etc/timezone
                   git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
+                  mkdir -p /var/jenkins_home/init.groovy.d
+                  cp /home/jenkins/agent/workspace/ongky_test/init.groovy.d/approve_all.groovy /var/jenkins_home/init.groovy.d/approve_all.groovy
                   exec cat
                 tty: true
                 env:
@@ -51,8 +53,6 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        // Ensure the directory exists
-                        sh 'mkdir -p /var/jenkins_home/init.groovy.d'
                         // Copy the approve_all.groovy script to the init.groovy.d directory
                         sh 'cp init.groovy.d/approve_all.groovy /var/jenkins_home/init.groovy.d/approve_all.groovy'
                     }

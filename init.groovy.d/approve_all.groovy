@@ -1,15 +1,14 @@
-import jenkins.model.Jenkins
-import org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval
+import jenkins.model.*
+import hudson.security.*
 
-def j = Jenkins.instance
-def approval = ScriptApproval.get()
+def approveAll = [
+    'method groovy.json.JsonBuilder new java.lang.Object',
+    'method groovy.json.JsonBuilder toPrettyString',
+    'staticMethod groovy.json.JsonOutput prettyPrint',
+    'method java.util.ArrayList size'
+]
 
-approval.pendingScripts.each { pending ->
-  approval.approveScript(pending.hash)
+def scriptApproval = ScriptApproval.get()
+approveAll.each { 
+    scriptApproval.approveSignature(it)
 }
-
-approval.pendingSignatures.each { pending ->
-  approval.approveSignature(pending.signature)
-}
-
-j.save()
