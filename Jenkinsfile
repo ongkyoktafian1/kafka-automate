@@ -31,6 +31,14 @@ pipeline {
     }
 
     stages {
+        stage('Install Git') {
+            steps {
+                container('python') {
+                    sh 'apt-get update && apt-get install -y git'
+                }
+            }
+        }
+
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
