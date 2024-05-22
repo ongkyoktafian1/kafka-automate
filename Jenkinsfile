@@ -21,13 +21,6 @@ pipeline {
                 env:
                 - name: TZ
                   value: "Asia/Jakarta"
-                volumeMounts:
-                - name: jenkins-home
-                  mountPath: /var/jenkins_home
-              volumes:
-              - name: jenkins-home
-                hostPath:
-                  path: /var/jenkins_home
             """
         }
     }
@@ -39,7 +32,10 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                container('python') {
+                    sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
+                    git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                }
             }
         }
 
