@@ -21,6 +21,13 @@ pipeline {
                 env:
                 - name: TZ
                   value: "Asia/Jakarta"
+                volumeMounts:
+                - name: jenkins-home
+                  mountPath: /var/jenkins_home
+              volumes:
+              - name: jenkins-home
+                hostPath:
+                  path: /var/jenkins_home
             """
         }
     }
@@ -40,6 +47,17 @@ pipeline {
             steps {
                 container('python') {
                     sh 'pip install kafka-python'
+                }
+            }
+        }
+
+        stage('Copy Init Script') {
+            steps {
+                container('python') {
+                    script {
+                        // Copy the approve_all.groovy script to the init.groovy.d directory
+                        sh 'cp init.groovy.d/approve_all.groovy /var/jenkins_home/init.groovy.d/approve_all.groovy'
+                    }
                 }
             }
         }
