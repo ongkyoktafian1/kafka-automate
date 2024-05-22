@@ -26,6 +26,7 @@ pipeline {
     }
 
     parameters {
+        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
         choice(name: 'TEAM', choices: ['money', 'payment', 'core'], description: 'Select the team')
     }
 
@@ -44,14 +45,31 @@ pipeline {
             }
         }
 
+        stage('Extract JIRA Key') {
+            steps {
+                container('python') {
+                    script {
+                        // Extract the JIRA key from the URL
+                        def jiraUrl = params.JIRA_URL
+                        def jiraKey = jiraUrl.tokenize('/').last()
+                        echo "JIRA Key: ${jiraKey}"
+
+                        // Store the JIRA key in an environment variable
+                        env.JIRA_KEY = jiraKey
+                    }
+                }
+            }
+        }
+
         stage('Debug File Timestamps') {
             steps {
                 container('python') {
                     script {
                         def team = params.TEAM
-                        def teamDir = "${team}"
+                        def jiraKey = env.JIRA_KEY
+                        def teamDir = "${team}/${jiraKey}"
 
-                        // Use git log to find the most recently committed file
+                        // Use git log to find the most recently committed file in the JIRA key directory
                         def latestFile = sh(script: """
                             git log -1 --name-only --pretty=format: -- ${teamDir}/*.json | head -n 1
                         """, returnStdout: true).trim()
