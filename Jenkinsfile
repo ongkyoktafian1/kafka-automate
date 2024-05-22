@@ -31,14 +31,6 @@ pipeline {
     }
 
     stages {
-        stage('Install Git') {
-            steps {
-                container('python') {
-                    sh 'apt-get update && apt-get install -y git'
-                }
-            }
-        }
-
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
@@ -49,6 +41,14 @@ pipeline {
             steps {
                 container('python') {
                     sh 'pip install kafka-python'
+                }
+            }
+        }
+
+        stage('Add Git Exception') {
+            steps {
+                container('python') {
+                    sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
                 }
             }
         }
