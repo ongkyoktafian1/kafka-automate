@@ -69,7 +69,7 @@ pipeline {
             }
         }
 
-        stage('Debug File Timestamps') {
+        stage('Find JSON Files') {
             steps {
                 container('python') {
                     script {
@@ -77,15 +77,19 @@ pipeline {
                         def jiraKey = env.JIRA_KEY
                         def teamDir = "${team}/${jiraKey}"
 
-                        // Use git log to find the most recently committed file in the JIRA key directory
-                        def latestFile = sh(script: """
-                            git log -1 --name-only --pretty=format: -- ${teamDir}/*.json | head -n 1
-                        """, returnStdout: true).trim()
+                        // Find all JSON files in the JIRA key directory
+                        def jsonFiles = sh(script: """
+                            find ${teamDir} -type f -name '*.json'
+                        """, returnStdout: true).trim().split('\n')
 
-                        echo "Latest file from GitHub: ${latestFile}"
+                        if (jsonFiles.length == 0) {
+                            error "No JSON files found in directory: ${teamDir}"
+                        }
 
-                        // Store the latest file path in an environment variable
-                        env.LATEST_FILE = latestFile
+                        echo "JSON files to be processed: ${jsonFiles.join(', ')}"
+
+                        // Store the JSON files in an environment variable
+                        env.JSON_FILES = jsonFiles.join(',')
                     }
                 }
             }
@@ -95,27 +99,29 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def latestFile = env.LATEST_FILE
-                        echo "Latest file to be processed: ${latestFile}"
+                        def jsonFiles = env.JSON_FILES.split(',')
 
-                        // Check if the file exists
-                        if (fileExists(latestFile)) {
-                            // Read the content of the latest file
-                            def config = readFile(file: latestFile)
-                            echo "Content of the latest file: ${config}"
+                        jsonFiles.each { jsonFile ->
+                            echo "Processing file: ${jsonFile}"
 
-                            def configData = readJSON text: config
-                            def topic = configData.topic
-                            def messages = configData.messages
+                            // Check if the file exists
+                            if (fileExists(jsonFile)) {
+                                // Read the content of the file
+                                def config = readFile(file: jsonFile)
+                                echo "Content of the file: ${config}"
 
-                            // Convert the messages array to a JSON string
-                            def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+                                def configData = readJSON text: config
+                                def topic = configData.topic
+                                def messages = configData.messages
 
-                            // Write the JSON string to the messages.json file
-                            writeFile file: 'messages.json', text: messagesJson
+                                // Convert the messages array to a JSON string
+                                def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
 
-                            // Create the Python script
-                            writeFile file: 'kafka_producer.py', text: """
+                                // Write the JSON string to the messages.json file
+                                writeFile file: 'messages.json', text: messagesJson
+
+                                // Create the Python script
+                                writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import json
 import sys
@@ -129,10 +135,11 @@ for message in messages:
 producer.flush()
 """
 
-                            // Run the Python script
-                            sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
-                        } else {
-                            error "File not found: ${latestFile}"
+                                // Run the Python script
+                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
+                            } else {
+                                error "File not found: ${jsonFile}"
+                            }
                         }
                     }
                 }
