@@ -49,15 +49,26 @@ pipeline {
                 }
             }
         }
-    }
 
-    parameters {
-        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: KAFKA_CLUSTERS, description: 'Select the Kafka cluster')
-    }
+        stage('Set Up Parameters') {
+            steps {
+                script {
+                    // Set up parameters after discovering Kafka clusters
+                    properties([
+                        parameters([
+                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
+                            choice(name: 'KAFKA_CLUSTER', choices: KAFKA_CLUSTERS.split(','), description: 'Select the Kafka cluster')
+                        ])
+                    ])
+                }
+            }
+        }
 
-    // Rest of the pipeline stages...
-}
+        stage('Clone Repository') {
+            steps {
+                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'multiple-cluster'
+            }
+        }
 
         stage('Install Dependencies') {
             steps {
