@@ -25,24 +25,12 @@ pipeline {
         }
     }
 
+    parameters {
+        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
+        choice(name: 'KAFKA_CLUSTER', choices: getKafkaClusters(), description: 'Select the Kafka cluster')
+    }
+
     stages {
-        stage('Initialize') {
-            steps {
-                script {
-                    // Get the Kafka cluster directories
-                    def kafkaClusters = getKafkaClusters()
-
-                    // Set the pipeline properties with dynamic choice parameter
-                    properties([
-                        parameters([
-                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
-                            choice(name: 'KAFKA_CLUSTER', choices: kafkaClusters.join('\n'), description: 'Select the Kafka cluster')
-                        ])
-                    ])
-                }
-            }
-        }
-
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
@@ -111,6 +99,8 @@ pipeline {
             steps {
                 container('python') {
                     script {
+                        def kafkaCluster = params.KAFKA_CLUSTER
+                        def bootstrapServer = getKafkaBootstrapServer(kafkaCluster)
                         def jsonFiles = env.JSON_FILES.split(',')
 
                         jsonFiles.each { jsonFile ->
@@ -141,7 +131,7 @@ import sys
 topic = sys.argv[1]
 messages = json.loads(sys.argv[2])
 
-producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092')
+producer = KafkaProducer(bootstrap_servers='${bootstrapServer}')
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
@@ -181,4 +171,14 @@ def getKafkaClusters() {
         }
     }
     return clusters
+}
+
+// Function to get Kafka bootstrap server based on cluster
+def getKafkaBootstrapServer(cluster) {
+    def configFilePath = "${cluster}/config.json"
+    if (!fileExists(configFilePath)) {
+        error "Configuration file not found for Kafka cluster: ${cluster}"
+    }
+    def config = readJSON file: configFilePath
+    return config.bootstrap_server ?: error("Bootstrap server not found in configuration file for Kafka cluster: ${cluster}")
 }
