@@ -27,7 +27,7 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: ['default'], description: 'Select the Kafka cluster') // Set a default choice
+        choice(name: 'KAFKA_CLUSTER', choices: ['default'], description: 'Select the Kafka cluster')
     }
 
     environment {
