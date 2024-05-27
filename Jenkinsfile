@@ -27,7 +27,7 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: ['default'], description: 'Select the Kafka cluster')
+        // Removed the initial declaration of KAFKA_CLUSTER parameter
     }
 
     environment {
@@ -56,26 +56,13 @@ pipeline {
 
                         echo "Discovered Kafka clusters: ${clusters.join(', ')}"
 
-                        // Store the discovered clusters in an environment variable
-                        env.KAFKA_CLUSTERS = clusters.join(',')
-                    }
-                }
-            }
-        }
-
-        stage('Update Parameter Choices') {
-            steps {
-                script {
-                    if (env.KAFKA_CLUSTERS) {
                         // Update the KAFKA_CLUSTER parameter choices dynamically
                         properties([
                             parameters([
                                 string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
-                                choice(name: 'KAFKA_CLUSTER', choices: env.KAFKA_CLUSTERS.split(','), description: 'Select the Kafka cluster')
+                                choice(name: 'KAFKA_CLUSTER', choices: clusters, description: 'Select the Kafka cluster')
                             ])
                         ])
-                    } else {
-                        error "KAFKA_CLUSTERS is empty or not set."
                     }
                 }
             }
