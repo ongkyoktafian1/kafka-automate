@@ -47,7 +47,7 @@ pipeline {
                     script {
                         // Find all Kafka cluster directories
                         def clusters = sh(script: """
-                            find kafka-automate -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|kafka-automate/||'
+                            find . -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|./||'
                         """, returnStdout: true).trim().split('\n')
 
                         if (clusters.size() == 0) {
@@ -109,7 +109,7 @@ pipeline {
 
                         // Find all JSON files in the JIRA key directory under the selected Kafka cluster
                         def jsonFiles = sh(script: """
-                            find kafka-automate/${kafkaCluster}/${jiraKey} -type f -name '*.json'
+                            find ${kafkaCluster}/${jiraKey} -type f -name '*.json'
                         """, returnStdout: true).trim().split('\n')
 
                         if (jsonFiles.size() == 0) {
@@ -130,7 +130,7 @@ pipeline {
                 container('python') {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
-                        def kafkaConfigFile = "kafka-automate/${kafkaCluster}/kafka_broker.config"
+                        def kafkaConfigFile = "${kafkaCluster}/kafka_broker.config"
 
                         // Read the Kafka broker configuration
                         def kafkaConfig = readProperties file: kafkaConfigFile
@@ -162,53 +162,4 @@ pipeline {
                             // Check if the file exists
                             if (fileExists(jsonFile)) {
                                 // Read the content of the file
-                                def config = readFile(file: jsonFile)
-                                echo "Content of the file: ${config}"
-
-                                def configData = readJSON text: config
-                                def topic = configData.topic
-                                def messages = configData.messages
-
-                                // Convert the messages array to a JSON string
-                                def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
-
-                                // Write the JSON string to the messages.json file
-                                writeFile file: 'messages.json', text: messagesJson
-
-                                // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: """
-from kafka import KafkaProducer
-import json
-import sys
-
-topic = sys.argv[1]
-messages = json.loads(sys.argv[2])
-broker = sys.argv[3]
-
-producer = KafkaProducer(bootstrap_servers=broker)
-for message in messages:
-    producer.send(topic, value=message.encode('utf-8'))
-producer.flush()
-"""
-
-                                // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
-                            } else {
-                                error "File not found: ${jsonFile}"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Messages published successfully!'
-        }
-        failure {
-            echo 'Failed to publish messages.'
-        }
-    }
-}
+                                def config = readFile(file: jsonFile
