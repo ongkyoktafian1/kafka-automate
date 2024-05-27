@@ -1,6 +1,7 @@
 pipeline {
     agent {
         kubernetes {
+            label 'kafka' // Specify the label of the Kubernetes pod template
             yaml """
             apiVersion: v1
             kind: Pod
@@ -33,7 +34,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                node {
+                node('my-custom-label') {
                     git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
                 }
             }
