@@ -27,7 +27,7 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: getKafkaClusters(), description: 'Select the Kafka cluster')
+        choice(name: 'KAFKA_CLUSTER', choices: loadKafkaClusters(), description: 'Select the Kafka cluster')
     }
 
     stages {
@@ -160,10 +160,11 @@ producer.flush()
 }
 
 // Load the Groovy script to get Kafka clusters
-def getKafkaClusters() {
+def loadKafkaClusters() {
     def clusters = []
     node {
-        clusters = load './getKafkaClusters.groovy'
+        def scriptPath = "${env.WORKSPACE}/scripts/getKafkaClusters.groovy"
+        clusters = load(scriptPath).call()
     }
     return clusters
 }
