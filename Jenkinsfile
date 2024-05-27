@@ -127,7 +127,7 @@ pipeline {
                                 if (kafkaCluster == "kafka-cluster-platform") {
                                     kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
                                 } else if (kafkaCluster == "kafka-cluster-data") {
-                                    kafkaBroker = "kafka-1.data.stg.ajaib.int:9092"
+                                    kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
                                 }
 
                                 // Create the Python script
