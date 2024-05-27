@@ -27,7 +27,7 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        // Removed the initial declaration of KAFKA_CLUSTER parameter
+        // Kafka cluster choices will be populated dynamically
     }
 
     environment {
@@ -47,7 +47,7 @@ pipeline {
                     script {
                         // Find all Kafka cluster directories
                         def clusters = sh(script: """
-                            find . -maxdepth 1 -type d -name 'kafka-cluster-*' | sed 's|./||'
+                            find kafka-automate -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|kafka-automate/||'
                         """, returnStdout: true).trim().split('\n')
 
                         if (clusters.size() == 0) {
@@ -107,23 +107,10 @@ pipeline {
                         def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
 
-                        // Find all team directories under the selected Kafka cluster
-                        def teams = sh(script: """
-                            find ${kafkaCluster} -maxdepth 1 -mindepth 1 -type d -exec basename {} \\;
+                        // Find all JSON files in the JIRA key directory under the selected Kafka cluster
+                        def jsonFiles = sh(script: """
+                            find kafka-automate/${kafkaCluster}/${jiraKey} -type f -name '*.json'
                         """, returnStdout: true).trim().split('\n')
-
-                        if (teams.size() == 0) {
-                            error "No teams found in Kafka cluster: ${kafkaCluster}"
-                        }
-
-                        echo "Discovered teams: ${teams.join(', ')}"
-
-                        // Find all JSON files in the JIRA key directory under each team
-                        def jsonFiles = teams.collect { team ->
-                            sh(script: """
-                                find ${kafkaCluster}/${team}/${jiraKey} -type f -name '*.json'
-                            """, returnStdout: true).trim().split('\n')
-                        }.flatten()
 
                         if (jsonFiles.size() == 0) {
                             error "No JSON files found for JIRA key: ${jiraKey} in Kafka cluster: ${kafkaCluster}"
@@ -143,7 +130,7 @@ pipeline {
                 container('python') {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
-                        def kafkaConfigFile = "${kafkaCluster}/kafka_broker.config"
+                        def kafkaConfigFile = "kafka-automate/${kafkaCluster}/kafka_broker.config"
 
                         // Read the Kafka broker configuration
                         def kafkaConfig = readProperties file: kafkaConfigFile
