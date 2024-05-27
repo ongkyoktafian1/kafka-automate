@@ -163,7 +163,7 @@ producer.flush()
 def getKafkaClusters() {
     def clusters = []
     node {
-        clusters = load 'path/to/getKafkaClusters.groovy'
+        clusters = load './getKafkaClusters.groovy'
     }
     return clusters
 }
