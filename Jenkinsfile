@@ -37,7 +37,7 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'multiple-cluster'
+                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
             }
         }
 
@@ -162,4 +162,53 @@ pipeline {
                             // Check if the file exists
                             if (fileExists(jsonFile)) {
                                 // Read the content of the file
-                                def config = readFile(file: jsonFile
+                                def config = readFile(file: jsonFile)
+                                echo "Content of the file: ${config}"
+
+                                def configData = readJSON text: config
+                                def topic = configData.topic
+                                def messages = configData.messages
+
+                                // Convert the messages array to a JSON string
+                                def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+
+                                // Write the JSON string to the messages.json file
+                                writeFile file: 'messages.json', text: messagesJson
+
+                                // Create the Python script
+                                writeFile file: 'kafka_producer.py', text: """
+from kafka import KafkaProducer
+import json
+import sys
+
+topic = sys.argv[1]
+messages = json.loads(sys.argv[2])
+broker = sys.argv[3]
+
+producer = KafkaProducer(bootstrap_servers=broker)
+for message in messages:
+    producer.send(topic, value=message.encode('utf-8'))
+producer.flush()
+"""
+
+                                // Run the Python script
+                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
+                            } else {
+                                error "File not found: ${jsonFile}"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Messages published successfully!'
+        }
+        failure {
+            echo 'Failed to publish messages.'
+        }
+    }
+}
