@@ -159,16 +159,11 @@ producer.flush()
     }
 }
 
-// Function to dynamically get Kafka clusters
+// Load the Groovy script to get Kafka clusters
 def getKafkaClusters() {
     def clusters = []
     node {
-        def result = sh(script: """
-            find . -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|./||'
-        """, returnStdout: true).trim()
-        if (result) {
-            clusters = result.split('\n')
-        }
+        clusters = load 'path/to/getKafkaClusters.groovy'
     }
     return clusters
 }
