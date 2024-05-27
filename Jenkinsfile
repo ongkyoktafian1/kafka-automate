@@ -27,7 +27,7 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'TEAM', choices: ['money', 'payment', 'core'], description: 'Select the team')
+        choice(name: 'KAFKA_CLUSTER', choices: getKafkaClusters(), description: 'Select the Kafka cluster')
     }
 
     stages {
@@ -73,9 +73,9 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def team = params.TEAM
+                        def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
-                        def teamDir = "${team}/${jiraKey}"
+                        def teamDir = "${kafkaCluster}/${jiraKey}"
 
                         // Find all JSON files in the JIRA key directory
                         def jsonFiles = sh(script: """
@@ -155,4 +155,18 @@ producer.flush()
             echo 'Failed to publish messages.'
         }
     }
+}
+
+// Function to dynamically get Kafka clusters
+def getKafkaClusters() {
+    def clusters = []
+    node {
+        def result = sh(script: """
+            find . -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|./kafka-cluster-||'
+        """, returnStdout: true).trim()
+        if (result) {
+            clusters = result.split('\n')
+        }
+    }
+    return clusters
 }
