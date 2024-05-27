@@ -27,8 +27,7 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        // Removed the TEAM parameter
-        // KAFKA_CLUSTER choices will be populated dynamically
+        choice(name: 'KAFKA_CLUSTER', choices: ['default'], description: 'Select the Kafka cluster') // Set a default choice
     }
 
     environment {
@@ -51,7 +50,7 @@ pipeline {
                             find . -maxdepth 1 -type d -name 'kafka-cluster-*' | sed 's|./||'
                         """, returnStdout: true).trim().split('\n')
 
-                        if (clusters.length == 0) {
+                        if (clusters.size() == 0) {
                             error "No Kafka clusters found."
                         }
 
@@ -67,13 +66,17 @@ pipeline {
         stage('Update Parameter Choices') {
             steps {
                 script {
-                    // Update the KAFKA_CLUSTER parameter choices dynamically
-                    properties([
-                        parameters([
-                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
-                            choice(name: 'KAFKA_CLUSTER', choices: env.KAFKA_CLUSTERS.split(','), description: 'Select the Kafka cluster')
+                    if (env.KAFKA_CLUSTERS) {
+                        // Update the KAFKA_CLUSTER parameter choices dynamically
+                        properties([
+                            parameters([
+                                string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
+                                choice(name: 'KAFKA_CLUSTER', choices: env.KAFKA_CLUSTERS.split(','), description: 'Select the Kafka cluster')
+                            ])
                         ])
-                    ])
+                    } else {
+                        error "KAFKA_CLUSTERS is empty or not set."
+                    }
                 }
             }
         }
@@ -122,7 +125,7 @@ pipeline {
                             find ${kafkaCluster} -maxdepth 1 -mindepth 1 -type d -exec basename {} \\;
                         """, returnStdout: true).trim().split('\n')
 
-                        if (teams.length == 0) {
+                        if (teams.size() == 0) {
                             error "No teams found in Kafka cluster: ${kafkaCluster}"
                         }
 
