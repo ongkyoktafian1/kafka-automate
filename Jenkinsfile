@@ -135,7 +135,7 @@ for message in messages:
 producer.flush()
 """
 
-                                // Run the Python script
+                                // Run the Python scriptt
                                 sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
                             } else {
                                 error "File not found: ${jsonFile}"
