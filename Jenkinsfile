@@ -28,6 +28,7 @@ pipeline {
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
         // Kafka cluster choices will be populated dynamically
+        choice(name: 'KAFKA_CLUSTER', choices: '', description: 'Select the Kafka cluster')
     }
 
     environment {
@@ -56,13 +57,8 @@ pipeline {
 
                         echo "Discovered Kafka clusters: ${clusters.join(', ')}"
 
-                        // Update the KAFKA_CLUSTER parameter choices dynamically
-                        properties([
-                            parameters([
-                                string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
-                                choice(name: 'KAFKA_CLUSTER', choices: clusters, description: 'Select the Kafka cluster')
-                            ])
-                        ])
+                        // Set the KAFKA_CLUSTER parameter choices dynamically
+                        params.KAFKA_CLUSTER.choices = clusters.join('\n')
                     }
                 }
             }
@@ -153,62 +149,4 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def jsonFiles = env.JSON_FILES.split(',')
-                        def kafkaBroker = env.KAFKA_BROKER
-
-                        jsonFiles.each { jsonFile ->
-                            echo "Processing file: ${jsonFile}"
-
-                            // Check if the file exists
-                            if (fileExists(jsonFile)) {
-                                // Read the content of the file
-                                def config = readFile(file: jsonFile)
-                                echo "Content of the file: ${config}"
-
-                                def configData = readJSON text: config
-                                def topic = configData.topic
-                                def messages = configData.messages
-
-                                // Convert the messages array to a JSON string
-                                def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
-
-                                // Write the JSON string to the messages.json file
-                                writeFile file: 'messages.json', text: messagesJson
-
-                                // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: """
-from kafka import KafkaProducer
-import json
-import sys
-
-topic = sys.argv[1]
-messages = json.loads(sys.argv[2])
-broker = sys.argv[3]
-
-producer = KafkaProducer(bootstrap_servers=broker)
-for message in messages:
-    producer.send(topic, value=message.encode('utf-8'))
-producer.flush()
-"""
-
-                                // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
-                            } else {
-                                error "File not found: ${jsonFile}"
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Messages published successfully!'
-        }
-        failure {
-            echo 'Failed to publish messages.'
-        }
-    }
-}
+                        def jsonFiles = env.JSON_FILES
