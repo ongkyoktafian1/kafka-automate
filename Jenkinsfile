@@ -75,9 +75,8 @@ pipeline {
                 container('python') {
                     script {
                         def team = params.TEAM
-                        def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
-                        def teamDir = "${kafkaCluster}/${team}/${jiraKey}"
+                        def teamDir = "${team}/${jiraKey}"
 
                         // Find all JSON files in the JIRA key directory
                         def jsonFiles = sh(script: """
