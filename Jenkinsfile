@@ -25,48 +25,15 @@ pipeline {
         }
     }
 
-    environment {
-        KAFKA_CLUSTERS = ''
+    parameters {
+        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
+        choice(name: 'KAFKA_CLUSTER', choices: getKafkaClusters(), description: 'Select the Kafka cluster')
     }
 
     stages {
-        stage('Discover Kafka Clusters') {
-            steps {
-                script {
-                    // Find all Kafka cluster directories
-                    def clusters = sh(script: """
-                        find . -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|./||'
-                    """, returnStdout: true).trim().split('\n')
-
-                    if (clusters.size() == 0) {
-                        error "No Kafka clusters found."
-                    }
-
-                    echo "Discovered Kafka clusters: ${clusters.join(', ')}"
-
-                    // Store the discovered clusters in an environment variable
-                    env.KAFKA_CLUSTERS = clusters.join(',')
-                }
-            }
-        }
-
-        stage('Set Up Parameters') {
-            steps {
-                script {
-                    // Set up parameters after discovering Kafka clusters
-                    properties([
-                        parameters([
-                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
-                            choice(name: 'KAFKA_CLUSTER', choices: env.KAFKA_CLUSTERS.split(','), description: 'Select the Kafka cluster')
-                        ])
-                    ])
-                }
-            }
-        }
-
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'multiple-cluster'
+                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
             }
         }
 
@@ -108,14 +75,16 @@ pipeline {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
+                        def clusterDir = "kafka-cluster-${kafkaCluster}"
+                        def teamDir = "${clusterDir}/${jiraKey}"
 
-                        // Find all JSON files in the JIRA key directory under the selected Kafka cluster
+                        // Find all JSON files in the JIRA key directory
                         def jsonFiles = sh(script: """
-                            find ${kafkaCluster}/${jiraKey} -type f -name '*.json'
+                            find ${teamDir} -type f -name '*.json'
                         """, returnStdout: true).trim().split('\n')
 
-                        if (jsonFiles.size() == 0) {
-                            error "No JSON files found for JIRA key: ${jiraKey} in Kafka cluster: ${kafkaCluster}"
+                        if (jsonFiles.length == 0) {
+                            error "No JSON files found in directory: ${teamDir}"
                         }
 
                         echo "JSON files to be processed: ${jsonFiles.join(', ')}"
@@ -127,36 +96,11 @@ pipeline {
             }
         }
 
-        stage('Read Kafka Broker Config') {
-            steps {
-                container('python') {
-                    script {
-                        def kafkaCluster = params.KAFKA_CLUSTER
-                        def kafkaConfigFile = "${kafkaCluster}/kafka_broker.config"
-
-                        // Read the Kafka broker configuration
-                        def kafkaConfig = readProperties file: kafkaConfigFile
-                        def kafkaBroker = kafkaConfig['bootstrap_servers']
-
-                        if (!kafkaBroker) {
-                            error "Kafka broker configuration not found in ${kafkaConfigFile}"
-                        }
-
-                        echo "Using Kafka broker: ${kafkaBroker}"
-
-                        // Store the Kafka broker in an environment variable
-                        env.KAFKA_BROKER = kafkaBroker
-                    }
-                }
-            }
-        }
-
         stage('Publish Messages to Kafka') {
             steps {
                 container('python') {
                     script {
                         def jsonFiles = env.JSON_FILES.split(',')
-                        def kafkaBroker = env.KAFKA_BROKER
 
                         jsonFiles.each { jsonFile ->
                             echo "Processing file: ${jsonFile}"
@@ -185,16 +129,15 @@ import sys
 
 topic = sys.argv[1]
 messages = json.loads(sys.argv[2])
-broker = sys.argv[3]
 
-producer = KafkaProducer(bootstrap_servers=broker)
+producer = KafkaProducer(bootstrap_servers='kafka-1.platform.stg.ajaib.int:9092')
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
 """
 
                                 // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
+                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\""
                             } else {
                                 error "File not found: ${jsonFile}"
                             }
@@ -213,4 +156,11 @@ producer.flush()
             echo 'Failed to publish messages.'
         }
     }
+}
+
+def getKafkaClusters() {
+    def clusters = sh(script: """
+        find . -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|./kafka-cluster-||'
+    """, returnStdout: true).trim().split('\n')
+    return clusters
 }
