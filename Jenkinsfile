@@ -25,12 +25,24 @@ pipeline {
         }
     }
 
-    parameters {
-        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: getKafkaClusters(), description: 'Select the Kafka cluster')
-    }
-
     stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    // Get the Kafka cluster directories
+                    def kafkaClusters = getKafkaClusters()
+
+                    // Set the pipeline properties with dynamic choice parameter
+                    properties([
+                        parameters([
+                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
+                            choice(name: 'KAFKA_CLUSTER', choices: kafkaClusters.join('\n'), description: 'Select the Kafka cluster')
+                        ])
+                    ])
+                }
+            }
+        }
+
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
@@ -162,7 +174,7 @@ def getKafkaClusters() {
     def clusters = []
     node {
         def result = sh(script: """
-            find . -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|./kafka-cluster-||'
+            find . -maxdepth 1 -mindepth 1 -type d -name 'kafka-cluster-*' | sed 's|./||'
         """, returnStdout: true).trim()
         if (result) {
             clusters = result.split('\n')
