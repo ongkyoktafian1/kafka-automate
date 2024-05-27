@@ -9,19 +9,25 @@ pipeline {
     stages {
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                node {
+                    git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                }
             }
         }
 
         stage('Install Dependencies') {
             steps {
-                sh 'pip install kafka-python'
+                node {
+                    sh 'pip install kafka-python'
+                }
             }
         }
 
         stage('Add Git Exception') {
             steps {
-                sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
+                node {
+                    sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
+                }
             }
         }
 
