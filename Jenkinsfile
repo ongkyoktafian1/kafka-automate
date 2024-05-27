@@ -29,18 +29,7 @@ pipeline {
         KAFKA_CLUSTERS = ''
     }
 
-    parameters {
-        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: env.KAFKA_CLUSTERS, description: 'Select the Kafka cluster')
-    }
-
     stages {
-        stage('Clone Repository') {
-            steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'multiple-cluster'
-            }
-        }
-
         stage('Discover Kafka Clusters') {
             steps {
                 script {
@@ -56,10 +45,19 @@ pipeline {
                     echo "Discovered Kafka clusters: ${clusters.join(', ')}"
 
                     // Store the discovered clusters in an environment variable
-                    env.KAFKA_CLUSTERS = clusters.join(',')
+                    KAFKA_CLUSTERS = clusters.join(',')
                 }
             }
         }
+    }
+
+    parameters {
+        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
+        choice(name: 'KAFKA_CLUSTER', choices: KAFKA_CLUSTERS, description: 'Select the Kafka cluster')
+    }
+
+    // Rest of the pipeline stages...
+}
 
         stage('Install Dependencies') {
             steps {
