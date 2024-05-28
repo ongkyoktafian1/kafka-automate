@@ -74,30 +74,31 @@ pipeline {
                         def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
                         def jsonFilePattern = "${jsonDirectory}/*.json"
 
-                        // Find the JSON file in the specified directory
-                        def jsonFile = sh(script: "ls ${jsonFilePattern} | head -n 1", returnStdout: true).trim()
+                        // Find all JSON files in the specified directory
+                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
-                        if (fileExists(jsonFile)) {
-                            def configData = readJSON file: jsonFile
-                            def topic = configData.topic
-                            def messages = configData.messages
+                        jsonFiles.each { jsonFile ->
+                            if (fileExists(jsonFile)) {
+                                def configData = readJSON file: jsonFile
+                                def topic = configData.topic
+                                def messages = configData.messages
 
-                            // Convert the messages array to a JSON string
-                            def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+                                // Convert the messages array to a JSON string
+                                def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
 
-                            // Write the JSON string to the messages.json file
-                            writeFile file: 'messages.json', text: messagesJson
+                                // Write the JSON string to the messages.json file
+                                writeFile file: 'messages.json', text: messagesJson
 
-                            // Determine the Kafka broker based on the selected Kafka cluster
-                            def kafkaBroker = ""
-                            if (kafkaCluster == "kafka-cluster-platform") {
-                                kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
-                            } else if (kafkaCluster == "kafka-cluster-data") {
-                                kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
-                            }
+                                // Determine the Kafka broker based on the selected Kafka cluster
+                                def kafkaBroker = ""
+                                if (kafkaCluster == "kafka-cluster-platform") {
+                                    kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
+                                } else if (kafkaCluster == "kafka-cluster-data") {
+                                    kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
+                                }
 
-                            // Create the Python script
-                            writeFile file: 'kafka_producer.py', text: """
+                                // Create the Python script
+                                writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import json
 import sys
@@ -112,10 +113,11 @@ for message in messages:
 producer.flush()
 """
 
-                            // Run the Python script
-                            sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
-                        } else {
-                            error "File not found in directory: ${jsonDirectory}"
+                                // Run the Python script
+                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
+                            } else {
+                                error "File not found: ${jsonFile}"
+                            }
                         }
                     }
                 }
