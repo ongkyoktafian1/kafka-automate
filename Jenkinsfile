@@ -69,13 +69,13 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def jsonFile = 'messages.json'
                         def kafkaCluster = params.KAFKA_CLUSTER
+                        def jiraKey = env.JIRA_KEY
+                        def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
+                        def jsonFilePattern = "${jsonDirectory}/*.json"
 
-                        // Sync JIRA URL if kafka-cluster-platform is selected
-                        if (kafkaCluster == 'kafka-cluster-platform') {
-                            sh "rsync -avz --delete ${env.WORKSPACE}/kafka-cluster-platform/ ${env.WORKSPACE}/target-directory/"
-                        }
+                        // Find the JSON file in the specified directory
+                        def jsonFile = sh(script: "ls ${jsonFilePattern} | head -n 1", returnStdout: true).trim()
 
                         if (fileExists(jsonFile)) {
                             def configData = readJSON file: jsonFile
@@ -115,7 +115,7 @@ producer.flush()
                             // Run the Python script
                             sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
                         } else {
-                            error "File not found: ${jsonFile}"
+                            error "File not found in directory: ${jsonDirectory}"
                         }
                     }
                 }
