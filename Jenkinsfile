@@ -12,7 +12,7 @@ pipeline {
                 - sh
                 - -c
                 - |
-                  apt-get update && apt-get install -y git tzdata
+                  apt-get update && apt-get install -y git tzdata jq
                   cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
                   echo "Asia/Jakarta" > /etc/timezone
                   git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
@@ -44,7 +44,6 @@ pipeline {
             steps {
                 container('python') {
                     deleteDir()  // Ensure the workspace is clean
-                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'git clone https://github.com/ongkyoktafian1/kafka-automate.git .'
                 }
             }
@@ -88,16 +87,15 @@ pipeline {
                         def jsonFilePattern = "${jsonDirectory}/*.json"
 
                         // Find all JSON files in the specified directory
-                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split('\\n')
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
+                                // Read and convert the JSON file using jq
+                                def messagesJson = sh(script: "jq -c . < ${jsonFile}", returnStdout: true).trim()
+
                                 def configData = readJSON file: jsonFile
                                 def topic = configData.topic
-                                def messages = configData.messages
-
-                                // Convert the messages array to a JSON string
-                                def messagesJson = sh(script: "echo '${groovy.json.JsonOutput.toJson(messages)}'", returnStdout: true).trim()
 
                                 // Write the JSON string to the messages.json file
                                 writeFile file: 'messages.json', text: messagesJson
@@ -127,7 +125,7 @@ producer.flush()
 """
 
                                 // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
+                                sh "python kafka_producer.py ${topic} \"${messagesJson}\" ${kafkaBroker}"
                             } else {
                                 error "File not found: ${jsonFile}"
                             }
