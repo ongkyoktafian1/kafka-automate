@@ -139,23 +139,23 @@ pipeline {
                                                     }
 
                                                     // Create the Python script
-                                                    writeFile file: 'kafka_producer.py', text: \"""
-                    from kafka import KafkaProducer
-                    import json
-                    import sys
+                                                    writeFile file: 'kafka_producer.py', text: """
+from kafka import KafkaProducer
+import json
+import sys
 
-                    topic = sys.argv[1]
-                    messages = json.loads(sys.argv[2])
-                    broker = sys.argv[3]
+topic = sys.argv[1]
+messages = json.loads(sys.argv[2])
+broker = sys.argv[3]
 
-                    producer = KafkaProducer(bootstrap_servers=broker)
-                    for message in messages:
-                        producer.send(topic, value=message.encode('utf-8'))
-                    producer.flush()
-                    \"""
+producer = KafkaProducer(bootstrap_servers=broker)
+for message in messages:
+    producer.send(topic, value=message.encode('utf-8'))
+producer.flush()
+"""
 
                                                     // Run the Python script
-                                                    sh "python kafka_producer.py \${topic} \\"\$(cat messages.json)\\" \${kafkaBroker}"
+                                                    sh "python kafka_producer.py \${topic} \"\\\$(cat messages.json)\" \${kafkaBroker}"
                                                 } else {
                                                     error "File not found: \${jsonFile}"
                                                 }
