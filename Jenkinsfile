@@ -11,22 +11,6 @@ pipeline {
     }
 
     stages {
-        stage('Auto Approve') {
-            steps {
-                script {
-                    // Execute the auto-approve script within a script block
-                    def scriptApproval = org.jenkinsci.plugins.scriptsecurity.scripts.ScriptApproval.get()
-                    def hashesToApprove = []
-                    scriptApproval.pendingScripts.each {
-                        hashesToApprove.add(it.hash)
-                    }
-                    hashesToApprove.each { hash ->
-                        scriptApproval.approveScript(hash)
-                    }
-                }
-            }
-        }
-
         stage('Generate Kafka Cluster Choices') {
             steps {
                 script {
@@ -37,15 +21,15 @@ pipeline {
             }
         }
 
-        stage('Main Pipeline') {
+        stage('Dynamic Pipeline') {
             steps {
                 script {
                     // Read the dynamically generated Kafka clusters
                     def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
                     def kafkaClusterChoicesFormatted = kafkaClusterChoices.join('\n')
 
-                    // Define the main pipeline with dynamic choices
-                    def mainPipeline = """
+                    // Define the dynamic pipeline
+                    def dynamicPipeline = """
 pipeline {
     agent {
         kubernetes {
@@ -75,7 +59,7 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: """${kafkaClusterChoicesFormatted}""", description: 'Select the Kafka cluster')
+        choice(name: 'KAFKA_CLUSTER', choices: '${kafkaClusterChoicesFormatted}', description: 'Select the Kafka cluster')
     }
 
     stages {
@@ -123,7 +107,7 @@ pipeline {
                         def jsonFilePattern = "${jsonDirectory}/*.json"
 
                         // Find all JSON files in the specified directory
-                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\n")
+                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -183,8 +167,8 @@ producer.flush()
     }
 }
 """
-                    writeFile file: 'main_pipeline.groovy', text: mainPipeline
-                    load 'main_pipeline.groovy'
+                    writeFile file: 'dynamic_pipeline.groovy', text: dynamicPipeline
+                    load 'dynamic_pipeline.groovy'
                 }
             }
         }
