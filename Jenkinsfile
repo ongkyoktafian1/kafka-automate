@@ -68,6 +68,7 @@ pipeline {
             }
             steps {
                 container('python') {
+                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'git clone https://github.com/ongkyoktafian1/kafka-automate.git .'
                 }
             }
@@ -101,6 +102,7 @@ pipeline {
             }
             steps {
                 container('python') {
+                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'pip install kafka-python'
                 }
             }
@@ -134,6 +136,7 @@ pipeline {
             }
             steps {
                 container('python') {
+                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
                 }
             }
