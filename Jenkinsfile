@@ -87,7 +87,7 @@ pipeline {
                         def jsonFilePattern = "${jsonDirectory}/*.json"
 
                         // Find all JSON files in the specified directory
-                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split('\\n')
+                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split('\n')
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -109,7 +109,7 @@ pipeline {
                                 }
 
                                 // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: """
+                                writeFile file: 'kafka_producer.py', text: '''
 from kafka import KafkaProducer
 import json
 import sys
@@ -122,10 +122,10 @@ producer = KafkaProducer(bootstrap_servers=broker)
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
-"""
+'''
 
                                 // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"${messagesJson}\" ${kafkaBroker}"
+                                sh "python kafka_producer.py ${topic} \"${messagesJson.replace('"', '\\"')}\" ${kafkaBroker}"
                             } else {
                                 error "File not found: ${jsonFile}"
                             }
