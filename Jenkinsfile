@@ -138,8 +138,8 @@ pipeline {
                                                         kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
                                                     }
 
-                                                    // Create the Python script
-                                                    writeFile file: 'kafka_producer.py', text: """
+                                                    // Create the Python script file
+                                                    writeFile file: 'kafka_producer.py', text: '''
 from kafka import KafkaProducer
 import json
 import sys
@@ -152,10 +152,10 @@ producer = KafkaProducer(bootstrap_servers=broker)
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
-"""
+'''
 
                                                     // Run the Python script
-                                                    sh "python kafka_producer.py \${topic} \"\\\$(cat messages.json)\" \${kafkaBroker}"
+                                                    sh "python kafka_producer.py \${topic} \"\$(cat messages.json)\" \${kafkaBroker}"
                                                 } else {
                                                     error "File not found: \${jsonFile}"
                                                 }
