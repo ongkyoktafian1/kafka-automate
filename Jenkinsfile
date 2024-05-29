@@ -5,6 +5,11 @@ pipeline {
         KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
     }
 
+    parameters {
+        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
+        string(name: 'KAFKA_CLUSTERS', defaultValue: '', description: 'Comma-separated list of Kafka clusters')
+    }
+
     stages {
         stage('Auto Approve') {
             steps {
