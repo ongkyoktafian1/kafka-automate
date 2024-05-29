@@ -77,6 +77,28 @@ pipeline {
             }
         }
 
+        stage('Create Kafka Producer Script') {
+            steps {
+                container('python') {
+                    // Create the Python script
+                    writeFile file: 'kafka_producer.py', text: """
+from kafka import KafkaProducer
+import json
+import sys
+
+topic = sys.argv[1]
+messages = json.loads(sys.argv[2])
+broker = sys.argv[3]
+
+producer = KafkaProducer(bootstrap_servers=broker, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+for message in messages:
+    producer.send(topic, value=message)
+producer.flush()
+"""
+                }
+            }
+        }
+
         stage('Publish to Kafka') {
             steps {
                 container('python') {
@@ -92,10 +114,8 @@ pipeline {
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
                                 // Read and convert the JSON file using jq
-                                def messagesJson = sh(script: "jq -c . < ${jsonFile}", returnStdout: true).trim()
-
-                                def configData = readJSON file: jsonFile
-                                def topic = configData.topic
+                                def messagesJson = sh(script: "jq -c .messages < ${jsonFile}", returnStdout: true).trim()
+                                def topic = sh(script: "jq -r .topic < ${jsonFile}", returnStdout: true).trim()
 
                                 // Write the JSON string to the messages.json file
                                 writeFile file: 'messages.json', text: messagesJson
@@ -107,22 +127,6 @@ pipeline {
                                 } else if (kafkaCluster == "kafka-cluster-data") {
                                     kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
                                 }
-
-                                // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: '''
-from kafka import KafkaProducer
-import json
-import sys
-
-topic = sys.argv[1]
-messages = json.loads(sys.argv[2])
-broker = sys.argv[3]
-
-producer = KafkaProducer(bootstrap_servers=broker)
-for message in messages:
-    producer.send(topic, value=message.encode('utf-8'))
-producer.flush()
-'''
 
                                 // Run the Python script
                                 sh "python kafka_producer.py ${topic} \"${messagesJson.replace('"', '\\"')}\" ${kafkaBroker}"
