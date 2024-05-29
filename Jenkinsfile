@@ -5,15 +5,17 @@ pipeline {
         KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
     }
 
+    parameters {
+        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
+        string(name: 'KAFKA_CLUSTERS', defaultValue: '', description: 'Comma-separated list of Kafka clusters')
+    }
+
     stages {
         stage('Auto Approve') {
             steps {
                 script {
-                    def userInput = input(
-                        id: 'AutoApprove', message: 'Do you want to proceed?', parameters: [
-                            booleanParam(defaultValue: true, description: 'Auto-approve the process', name: 'Proceed')
-                        ]
-                    )
+                    // Simulate auto-approval by defaulting to true
+                    def userInput = true
                     if (!userInput) {
                         error "Pipeline aborted by user"
                     }
@@ -24,22 +26,9 @@ pipeline {
         stage('Generate Kafka Cluster Choices') {
             steps {
                 script {
-                    // Define the base directory where Kafka cluster directories are located
-                    def baseDir = new File("${env.WORKSPACE}")
-
-                    // List directories in the base directory
-                    def kafkaClusters = []
-                    baseDir.eachFile { file ->
-                        if (file.isDirectory()) {
-                            kafkaClusters << file.name
-                        }
-                    }
-
-                    // Generate the choices string for the parameter
-                    def kafkaClusterChoices = kafkaClusters.join("\n")
-
-                    // Write the choices to a file (this can be read by the main pipeline)
-                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusterChoices
+                    // Use the predefined parameter or default to a hardcoded value
+                    def kafkaClusters = params.KAFKA_CLUSTERS ?: "kafka-cluster-platform,kafka-cluster-data"
+                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters
                 }
             }
         }
@@ -50,7 +39,7 @@ pipeline {
             }
             steps {
                 script {
-                    def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split("\n")
+                    def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split(',')
 
                     // Define the main pipeline with dynamic choices
                     def mainPipeline = """
