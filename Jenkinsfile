@@ -103,11 +103,11 @@ pipeline {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
-                        def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
-                        def jsonFilePattern = "${jsonDirectory}/*.json"
+                        def jsonDirectory = "\${env.WORKSPACE}/\${kafkaCluster}/\${jiraKey}"
+                        def jsonFilePattern = "\${jsonDirectory}/*.json"
 
                         // Find all JSON files in the specified directory
-                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                        def jsonFiles = sh(script: "ls \${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -146,9 +146,9 @@ producer.flush()
 '''
 
                                 // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
+                                sh "python kafka_producer.py \${topic} \"\$(cat messages.json)\" \${kafkaBroker}"
                             } else {
-                                error "File not found: ${jsonFile}"
+                                error "File not found: \${jsonFile}"
                             }
                         }
                     }
@@ -183,3 +183,8 @@ producer.flush()
         }
     }
 }
+"""
+
+### How to Use:
+1. **Update the Jenkinsfile** in your existing Jenkins job configuration with the provided script.
+2. **Run the pipeline**. When you run the pipeline, it will dynamically update the `KAFKA_CLUSTER` parameter choices based on the provided or default values and proceed with the rest of the pipeline stages using the Kubernetes agent configuration.
