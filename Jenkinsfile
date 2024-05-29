@@ -10,13 +10,14 @@ pipeline {
             steps {
                 script {
                     // Define the base directory where Kafka cluster directories are located
-                    def baseDir = "${env.WORKSPACE}"
+                    def baseDir = new File("${env.WORKSPACE}")
 
                     // List directories in the base directory
                     def kafkaClusters = []
-                    def dir = new File(baseDir)
-                    dir.eachDir { folder ->
-                        kafkaClusters << folder.name
+                    baseDir.eachFile { file ->
+                        if (file.isDirectory()) {
+                            kafkaClusters << file.name
+                        }
                     }
 
                     // Generate the choices string for the parameter
