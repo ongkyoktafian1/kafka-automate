@@ -67,7 +67,9 @@ pipeline {
                 }
             }
             steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                container('python') {
+                    sh 'git clone https://github.com/ongkyoktafian1/kafka-automate.git .'
+                }
             }
         }
 
