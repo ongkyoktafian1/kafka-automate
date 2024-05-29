@@ -1,5 +1,29 @@
 pipeline {
-    agent any
+    agent {
+        kubernetes {
+            yaml """
+            apiVersion: v1
+            kind: Pod
+            spec:
+              containers:
+              - name: python
+                image: python:3.9-slim
+                command:
+                - sh
+                - -c
+                - |
+                  apt-get update && apt-get install -y git tzdata
+                  cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+                  echo "Asia/Jakarta" > /etc/timezone
+                  git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
+                  exec cat
+                tty: true
+                env:
+                - name: TZ
+                  value: "Asia/Jakarta"
+            """
+        }
+    }
 
     environment {
         KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
@@ -20,7 +44,7 @@ pipeline {
         stage('Generate Kafka Cluster Choices') {
             steps {
                 script {
-                    def kafkaClusters = params.KAFKA_CLUSTERS?.split(',')?.collect { it.trim() }
+                    def kafkaClusters = params.KAFKA_CLUSTERS.split(',').collect { it.trim() }
                     writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters.join('\n')
                 }
             }
@@ -41,134 +65,31 @@ pipeline {
         }
 
         stage('Clone Repository') {
-            agent {
-                kubernetes {
-                    yaml """
-                    apiVersion: v1
-                    kind: Pod
-                    spec:
-                      containers:
-                      - name: python
-                        image: python:3.9-slim
-                        command:
-                        - sh
-                        - -c
-                        - |
-                          apt-get update && apt-get install -y git tzdata
-                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-                          echo "Asia/Jakarta" > /etc/timezone
-                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
-                          exec cat
-                        tty: true
-                        env:
-                        - name: TZ
-                          value: "Asia/Jakarta"
-                    """
-                }
-            }
             steps {
                 container('python') {
-                    deleteDir()  // Clean the workspace
-                    sh 'apt-get update && apt-get install -y git tzdata'
+                    deleteDir()  // Ensure the workspace is clean
                     sh 'git clone https://github.com/ongkyoktafian1/kafka-automate.git .'
                 }
             }
         }
 
         stage('Install Dependencies') {
-            agent {
-                kubernetes {
-                    yaml """
-                    apiVersion: v1
-                    kind: Pod
-                    spec:
-                      containers:
-                      - name: python
-                        image: python:3.9-slim
-                        command:
-                        - sh
-                        - -c
-                        - |
-                          apt-get update && apt-get install -y git tzdata
-                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-                          echo "Asia/Jakarta" > /etc/timezone
-                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
-                          exec cat
-                        tty: true
-                        env:
-                        - name: TZ
-                          value: "Asia/Jakarta"
-                    """
-                }
-            }
             steps {
                 container('python') {
-                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'pip install kafka-python'
                 }
             }
         }
 
         stage('Add Git Exception') {
-            agent {
-                kubernetes {
-                    yaml """
-                    apiVersion: v1
-                    kind: Pod
-                    spec:
-                      containers:
-                      - name: python
-                        image: python:3.9-slim
-                        command:
-                        - sh
-                        - -c
-                        - |
-                          apt-get update && apt-get install -y git tzdata
-                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-                          echo "Asia/Jakarta" > /etc/timezone
-                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
-                          exec cat
-                        tty: true
-                        env:
-                        - name: TZ
-                          value: "Asia/Jakarta"
-                    """
-                }
-            }
             steps {
                 container('python') {
-                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
                 }
             }
         }
 
         stage('Extract JIRA Key') {
-            agent {
-                kubernetes {
-                    yaml """
-                    apiVersion: v1
-                    kind: Pod
-                    spec:
-                      containers:
-                      - name: python
-                        image: python:3.9-slim
-                        command:
-                        - sh
-                        - -c
-                        - |
-                          apt-get update && apt-get install -y git tzdata
-                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-                          echo "Asia/Jakarta" > /etc/timezone
-                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
-                          exec cat
-                        tty: true
-                        env:
-                        - name: TZ
-                          value: "Asia/Jakarta"
-                    """
-                }
-            }
             steps {
                 container('python') {
                     script {
@@ -180,31 +101,6 @@ pipeline {
         }
 
         stage('Publish to Kafka') {
-            agent {
-                kubernetes {
-                    yaml """
-                    apiVersion: v1
-                    kind: Pod
-                    spec:
-                      containers:
-                      - name: python
-                        image: python:3.9-slim
-                        command:
-                        - sh
-                        - -c
-                        - |
-                          apt-get update && apt-get install -y git tzdata
-                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-                          echo "Asia/Jakarta" > /etc/timezone
-                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
-                          exec cat
-                        tty: true
-                        env:
-                        - name: TZ
-                          value: "Asia/Jakarta"
-                    """
-                }
-            }
             steps {
                 container('python') {
                     script {
