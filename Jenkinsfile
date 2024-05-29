@@ -34,6 +34,7 @@ pipeline {
         stage('Auto Approve Scripts') {
             steps {
                 script {
+                    // Trigger the AutoApproveJob
                     build job: 'AutoApproveJob', wait: true
                 }
             }
@@ -43,6 +44,7 @@ pipeline {
             steps {
                 container('python') {
                     deleteDir()  // Ensure the workspace is clean
+                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'git clone https://github.com/ongkyoktafian1/kafka-automate.git .'
                 }
             }
@@ -109,7 +111,7 @@ pipeline {
                                 }
 
                                 // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: """
+                                writeFile file: 'kafka_producer.py', text: '''
 from kafka import KafkaProducer
 import json
 import sys
@@ -122,7 +124,7 @@ producer = KafkaProducer(bootstrap_servers=broker)
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
-"""
+'''
 
                                 // Run the Python script
                                 sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
