@@ -11,37 +11,9 @@ pipeline {
     }
 
     stages {
-        stage('Generate Kafka Cluster Choices') {
+        stage('Update Kafka Cluster Choices') {
             steps {
-                script {
-                    // Execute the Groovy script to update the job parameters
-                    def scriptContent = '''
-                        import jenkins.model.*
-                        import hudson.model.*
-
-                        def kafkaClusters = ["kafka-cluster-platform", "kafka-cluster-data"] // Default values if not reading from a file or directory
-
-                        // Create a list of choices as a newline-separated string
-                        def choices = kafkaClusters.join("\\n")
-
-                        // Get the current Jenkins job
-                        def job = Jenkins.instance.getItemByFullName(env.JOB_NAME)
-                        def property = job.getProperty(ParametersDefinitionProperty)
-                        def parameterDefinitions = property.getParameterDefinitions()
-
-                        // Find the KAFKA_CLUSTER parameter and update its choices
-                        parameterDefinitions.each { param ->
-                            if (param.name == "KAFKA_CLUSTER") {
-                                param.setChoices(choices.split("\\n"))
-                            }
-                        }
-
-                        // Save the job to persist the changes
-                        job.save()
-                    '''
-                    writeFile file: 'generate_kafka_choices.groovy', text: scriptContent
-                    sh 'groovy generate_kafka_choices.groovy'
-                }
+                build job: 'UpdateChoicesJob'
             }
         }
 
@@ -57,6 +29,16 @@ pipeline {
                     hashesToApprove.each { hash ->
                         scriptApproval.approveScript(hash)
                     }
+                }
+            }
+        }
+
+        stage('Generate Kafka Cluster Choices') {
+            steps {
+                script {
+                    // Define default Kafka clusters if none are provided
+                    def kafkaClusters = params.KAFKA_CLUSTERS?.trim() ? params.KAFKA_CLUSTERS : "kafka-cluster-platform,kafka-cluster-data"
+                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters
                 }
             }
         }
