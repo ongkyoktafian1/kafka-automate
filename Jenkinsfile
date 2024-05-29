@@ -11,61 +11,30 @@ pipeline {
     }
 
     stages {
-        stage('Auto Approve Scripts') {
-            steps {
-                build job: 'AutoApproveJob', wait: true
-            }
-        }
-
         stage('Generate Kafka Cluster Choices') {
             steps {
                 script {
-                    def kafkaClusters = params.KAFKA_CLUSTERS?.split(',')?.collect { it.trim() }
-                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters.join('\n')
+                    def kafkaClusters = params.KAFKA_CLUSTERS.split(',').collect { it.trim() }
+                    def kafkaClusterChoices = kafkaClusters.join('\n')
+                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusterChoices
                 }
             }
         }
 
-        stage('Dynamic Pipeline') {
+        stage('Read Kafka Cluster Choices') {
             steps {
                 script {
-                    def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
-                    def kafkaClusterChoicesFormatted = kafkaClusterChoices.join('\n')
-
-                    def dynamicPipeline = """
-pipeline {
-    agent {
-        kubernetes {
-            yaml \"""
-            apiVersion: v1
-            kind: Pod
-            spec:
-              containers:
-              - name: python
-                image: python:3.9-slim
-                command:
-                - sh
-                - -c
-                - |
-                  apt-get update && apt-get install -y git tzdata
-                  cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-                  echo "Asia/Jakarta" > /etc/timezone
-                  git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
-                  exec cat
-                tty: true
-                env:
-                - name: TZ
-                  value: "Asia/Jakarta"
-            \"""
+                    def kafkaClusterChoices = readFile(KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
+                    properties([
+                        parameters([
+                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
+                            choice(name: 'KAFKA_CLUSTER', choices: kafkaClusterChoices.join('\n'), description: 'Select the Kafka cluster')
+                        ])
+                    ])
+                }
+            }
         }
-    }
 
-    parameters {
-        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: '${kafkaClusterChoicesFormatted}', description: 'Select the Kafka cluster')
-    }
-
-    stages {
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
@@ -105,10 +74,10 @@ pipeline {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
-                        def jsonDirectory = "\${env.WORKSPACE}/\${kafkaCluster}/\${jiraKey}"
-                        def jsonFilePattern = "\${jsonDirectory}/*.json"
+                        def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
+                        def jsonFilePattern = "${jsonDirectory}/*.json"
 
-                        def jsonFiles = sh(script: "ls \${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\n")
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -141,9 +110,9 @@ for message in messages:
 producer.flush()
 '''
 
-                                sh "python kafka_producer.py \${topic} \"\$(cat messages.json)\" \${kafkaBroker}"
+                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
                             } else {
-                                error "File not found: \${jsonFile}"
+                                error "File not found: ${jsonFile}"
                             }
                         }
                     }
@@ -158,23 +127,6 @@ producer.flush()
         }
         failure {
             echo 'Failed to publish messages.'
-        }
-    }
-}
-"""
-                    writeFile file: 'dynamic_pipeline.groovy', text: dynamicPipeline
-                    load 'dynamic_pipeline.groovy'
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline executed successfully!'
-        }
-        failure {
-            echo 'Pipeline execution failed.'
         }
     }
 }
