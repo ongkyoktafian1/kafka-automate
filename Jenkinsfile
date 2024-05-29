@@ -68,6 +68,7 @@ pipeline {
             steps {
                 container('python') {
                     deleteDir()  // Ensure the workspace is clean
+                    sh 'apt-get update && apt-get install -y git tzdata'
                     sh 'git clone https://github.com/ongkyoktafian1/kafka-automate.git .'
                 }
             }
