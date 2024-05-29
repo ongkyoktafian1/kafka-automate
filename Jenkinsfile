@@ -31,7 +31,6 @@ pipeline {
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        string(name: 'KAFKA_CLUSTERS', defaultValue: 'kafka-cluster-platform,kafka-cluster-data', description: 'Comma-separated list of Kafka clusters')
     }
 
     stages {
@@ -44,13 +43,14 @@ pipeline {
         stage('Generate Kafka Cluster Choices') {
             steps {
                 script {
-                    def kafkaClusters = params.KAFKA_CLUSTERS.split(',').collect { it.trim() }
+                    // Find all directories in the workspace for Kafka clusters
+                    def kafkaClusters = sh(script: "find . -maxdepth 1 -type d -name 'kafka-*' -exec basename {} \\;", returnStdout: true).trim().split('\n')
                     writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters.join('\n')
                 }
             }
         }
 
-        stage('Read Kafka Cluster Choices') {
+        stage('Set Parameters') {
             steps {
                 script {
                     def kafkaClusterChoices = readFile(KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
