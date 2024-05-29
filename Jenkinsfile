@@ -9,8 +9,14 @@ pipeline {
         stage('Auto Approve') {
             steps {
                 script {
-                    // Load the auto-approve script
-                    load 'auto_approve.groovy'
+                    def userInput = input(
+                        id: 'AutoApprove', message: 'Do you want to proceed?', parameters: [
+                            booleanParam(defaultValue: true, description: 'Auto-approve the process', name: 'Proceed')
+                        ]
+                    )
+                    if (!userInput) {
+                        error "Pipeline aborted by user"
+                    }
                 }
             }
         }
