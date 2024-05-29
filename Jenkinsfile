@@ -67,7 +67,7 @@ pipeline {
 
                         parameters {
                             string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-                            choice(name: 'KAFKA_CLUSTER', choices: \${kafkaClusterChoices}, description: 'Select the Kafka cluster')
+                            choice(name: 'KAFKA_CLUSTER', choices: ${kafkaClusterChoices}, description: 'Select the Kafka cluster')
                         }
 
                         stages {
@@ -111,11 +111,11 @@ pipeline {
                                         script {
                                             def kafkaCluster = params.KAFKA_CLUSTER
                                             def jiraKey = env.JIRA_KEY
-                                            def jsonDirectory = "\${env.WORKSPACE}/\${kafkaCluster}/\${jiraKey}"
-                                            def jsonFilePattern = "\${jsonDirectory}/*.json"
+                                            def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
+                                            def jsonFilePattern = "${jsonDirectory}/*.json"
 
                                             // Find all JSON files in the specified directory
-                                            def jsonFiles = sh(script: "ls \${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                                            def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
                                             jsonFiles.each { jsonFile ->
                                                 if (fileExists(jsonFile)) {
@@ -138,7 +138,7 @@ pipeline {
                                                     }
 
                                                     // Create the Python script
-                                                    writeFile file: 'kafka_producer.py', text: \"""
+                                                    writeFile file: 'kafka_producer.py', text: """
                     from kafka import KafkaProducer
                     import json
                     import sys
@@ -151,12 +151,12 @@ pipeline {
                     for message in messages:
                         producer.send(topic, value=message.encode('utf-8'))
                     producer.flush()
-                    \"""
+                    """
 
                                                     // Run the Python script
-                                                    sh "python kafka_producer.py \${topic} \\"\$(cat messages.json)\\" \${kafkaBroker}"
+                                                    sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
                                                 } else {
-                                                    error "File not found: \${jsonFile}"
+                                                    error "File not found: ${jsonFile}"
                                                 }
                                             }
                                         }
