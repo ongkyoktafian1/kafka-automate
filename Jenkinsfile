@@ -30,7 +30,7 @@ pipeline {
     }
 
     stages {
-        stage('Initialize') {
+        stage('Initialize Parameters') {
             steps {
                 script {
                     // Generate Kafka Cluster Choices
@@ -46,9 +46,17 @@ pipeline {
             }
         }
 
-        stage('Auto Approve Scripts') {
+        stage('Input Parameters') {
             steps {
-                build job: 'AutoApproveJob', wait: true
+                script {
+                    // Prompt user for input
+                    def userParams = input message: 'Provide parameters', parameters: [
+                        string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
+                        choice(name: 'KAFKA_CLUSTER', choices: readFile(KAFKA_CLUSTER_CHOICES_FILE).split('\n'), description: 'Select the Kafka cluster')
+                    ]
+                    env.JIRA_URL = userParams['JIRA_URL']
+                    env.KAFKA_CLUSTER = userParams['KAFKA_CLUSTER']
+                }
             }
         }
 
@@ -82,7 +90,7 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def jiraKey = params.JIRA_URL.tokenize('/').last()
+                        def jiraKey = env.JIRA_URL.tokenize('/').last()
                         env.JIRA_KEY = jiraKey
                     }
                 }
@@ -93,7 +101,7 @@ pipeline {
             steps {
                 container('python') {
                     script {
-                        def kafkaCluster = params.KAFKA_CLUSTER
+                        def kafkaCluster = env.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
                         def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
                         def jsonFilePattern = "${jsonDirectory}/*.json"
