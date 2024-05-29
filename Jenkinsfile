@@ -5,11 +5,6 @@ pipeline {
         KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
     }
 
-    parameters {
-        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        string(name: 'KAFKA_CLUSTERS', defaultValue: '', description: 'Comma-separated list of Kafka clusters')
-    }
-
     stages {
         stage('Auto Approve') {
             steps {
@@ -26,8 +21,8 @@ pipeline {
         stage('Generate Kafka Cluster Choices') {
             steps {
                 script {
-                    // Use the predefined parameter or default to a hardcoded value
-                    def kafkaClusters = params.KAFKA_CLUSTERS ?: "kafka-cluster-platform,kafka-cluster-data"
+                    // Define default Kafka clusters if none are provided
+                    def kafkaClusters = params.KAFKA_CLUSTERS?.trim() ? params.KAFKA_CLUSTERS : "kafka-cluster-platform,kafka-cluster-data"
                     writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters
                 }
             }
@@ -39,7 +34,8 @@ pipeline {
             }
             steps {
                 script {
-                    def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split(',')
+                    def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split(',').collect { it.trim() }
+                    def kafkaClusterChoicesFormatted = kafkaClusterChoices.join("\n")
 
                     // Define the main pipeline with dynamic choices
                     def mainPipeline = """
@@ -72,7 +68,7 @@ pipeline {
 
                         parameters {
                             string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-                            choice(name: 'KAFKA_CLUSTER', choices: \${kafkaClusterChoices}, description: 'Select the Kafka cluster')
+                            choice(name: 'KAFKA_CLUSTER', choices: '${kafkaClusterChoicesFormatted}', description: 'Select the Kafka cluster')
                         }
 
                         stages {
