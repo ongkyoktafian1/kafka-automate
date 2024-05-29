@@ -106,7 +106,7 @@ pipeline {
                         def jsonDirectory = "\${env.WORKSPACE}/\${kafkaCluster}/\${jiraKey}"
                         def jsonFilePattern = "\${jsonDirectory}/*.json"
 
-                        // Find all JSON files in the specified directory
+                        /// Find all JSON files in the specified directory
                         def jsonFiles = sh(script: "ls \${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
                         jsonFiles.each { jsonFile ->
