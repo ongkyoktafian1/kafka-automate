@@ -44,7 +44,7 @@ pipeline {
 pipeline {
     agent {
         kubernetes {
-            yaml \"\"\"
+            yaml \"""
             apiVersion: v1
             kind: Pod
             spec:
@@ -64,13 +64,13 @@ pipeline {
                 env:
                 - name: TZ
                   value: "Asia/Jakarta"
-            \"\"\"
+            \"""
         }
     }
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: '${kafkaClusterChoicesFormatted}', description: 'Select the Kafka cluster')
+        choice(name: 'KAFKA_CLUSTER', choices: "${kafkaClusterChoicesFormatted}", description: 'Select the Kafka cluster')
     }
 
     stages {
