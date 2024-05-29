@@ -1,7 +1,50 @@
 pipeline {
+    agent any
+
+    environment {
+        KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
+    }
+
+    parameters {
+        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
+        string(name: 'KAFKA_CLUSTERS', defaultValue: '', description: 'Comma-separated list of Kafka clusters')
+    }
+
+    stages {
+        stage('Auto Approve') {
+            steps {
+                script {
+                    // Load and execute the auto_approve.groovy script
+                    load 'auto_approve.groovy'
+                }
+            }
+        }
+
+        stage('Generate Kafka Cluster Choices') {
+            steps {
+                script {
+                    // Define default Kafka clusters if none are provided
+                    def kafkaClusters = params.KAFKA_CLUSTERS?.trim() ? params.KAFKA_CLUSTERS : "kafka-cluster-platform,kafka-cluster-data"
+                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters
+                }
+            }
+        }
+
+        stage('Main Pipeline') {
+            when {
+                expression { fileExists(env.KAFKA_CLUSTER_CHOICES_FILE) }
+            }
+            steps {
+                script {
+                    def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split(',').collect { it.trim() }
+                    def kafkaClusterChoicesFormatted = kafkaClusterChoices.join("\n")
+
+                    // Define the main pipeline with dynamic choices
+                    def mainPipeline = """
+pipeline {
     agent {
         kubernetes {
-            yaml """
+            yaml \"\"\"
             apiVersion: v1
             kind: Pod
             spec:
@@ -21,13 +64,13 @@ pipeline {
                 env:
                 - name: TZ
                   value: "Asia/Jakarta"
-            """
+            \"\"\"
         }
     }
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: ['kafka-cluster-platform', 'kafka-cluster-data'], description: 'Select the Kafka cluster')
+        choice(name: 'KAFKA_CLUSTER', choices: '${kafkaClusterChoicesFormatted}', description: 'Select the Kafka cluster')
     }
 
     stages {
@@ -71,11 +114,11 @@ pipeline {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
-                        def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
-                        def jsonFilePattern = "${jsonDirectory}/*.json"
+                        def jsonDirectory = "\${env.WORKSPACE}/\${kafkaCluster}/\${jiraKey}"
+                        def jsonFilePattern = "\${jsonDirectory}/*.json"
 
                         // Find all JSON files in the specified directory
-                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                        def jsonFiles = sh(script: "ls \${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -97,8 +140,8 @@ pipeline {
                                     kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
                                 }
 
-                                // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: """
+                                // Create the Python script file
+                                writeFile file: 'kafka_producer.py', text: '''
 from kafka import KafkaProducer
 import json
 import sys
@@ -111,12 +154,12 @@ producer = KafkaProducer(bootstrap_servers=broker)
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
-"""
+'''
 
                                 // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
+                                sh "python kafka_producer.py \${topic} \"\\\$(cat messages.json)\" \${kafkaBroker}"
                             } else {
-                                error "File not found: ${jsonFile}"
+                                error "File not found: \${jsonFile}"
                             }
                         }
                     }
@@ -131,6 +174,23 @@ producer.flush()
         }
         failure {
             echo 'Failed to publish messages.'
+        }
+    }
+}
+"""
+                    writeFile file: 'main_pipeline.groovy', text: mainPipeline
+                    load 'main_pipeline.groovy'
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline executed successfully!'
+        }
+        failure {
+            echo 'Pipeline execution failed.'
         }
     }
 }
