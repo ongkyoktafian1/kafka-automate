@@ -33,13 +33,18 @@ pipeline {
     stages {
         stage('Auto Approve Scripts') {
             steps {
-                build job: 'AutoApproveJob', wait: true
+                script {
+                    build job: 'AutoApproveJob', wait: true
+                }
             }
         }
 
         stage('Clone Repository') {
             steps {
-                git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
+                container('python') {
+                    deleteDir()  // Ensure the workspace is clean
+                    sh 'git clone https://github.com/ongkyoktafian1/kafka-automate.git .'
+                }
             }
         }
 
