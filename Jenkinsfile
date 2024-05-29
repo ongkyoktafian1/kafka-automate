@@ -97,7 +97,7 @@ pipeline {
                                 def messages = configData.messages
 
                                 // Convert the messages array to a JSON string
-                                def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
+                                def messagesJson = sh(script: "echo '${groovy.json.JsonOutput.toJson(messages)}'", returnStdout: true).trim()
 
                                 // Write the JSON string to the messages.json file
                                 writeFile file: 'messages.json', text: messagesJson
@@ -111,7 +111,7 @@ pipeline {
                                 }
 
                                 // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: '''
+                                writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import json
 import sys
@@ -124,7 +124,7 @@ producer = KafkaProducer(bootstrap_servers=broker)
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
-'''
+"""
 
                                 // Run the Python script
                                 sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
