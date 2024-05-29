@@ -31,6 +31,13 @@ pipeline {
     }
 
     stages {
+        stage('Auto Approve Scripts') {
+            steps {
+                build job: 'AutoApproveJob', wait: true
+            }
+        }
+
+    stages {
         stage('Clone Repository') {
             steps {
                 git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
