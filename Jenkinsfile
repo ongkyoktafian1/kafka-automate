@@ -29,38 +29,26 @@ pipeline {
         KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
     }
 
-    parameters {
-        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-    }
-
     stages {
+        stage('Initialize') {
+            steps {
+                script {
+                    // Generate Kafka Cluster Choices
+                    def kafkaClusters = sh(script: "find . -maxdepth 1 -type d -name 'kafka-*' -exec basename {} \\;", returnStdout: true).trim().split('\n')
+                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters.join('\n')
+
+                    def kafkaClusterChoices = readFile(KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
+                    currentBuild.rawBuild.getParent().addProperty(new hudson.model.ParametersDefinitionProperty(
+                        new hudson.model.StringParameterDefinition('JIRA_URL', '', 'Enter the JIRA URL'),
+                        new hudson.model.ChoiceParameterDefinition('KAFKA_CLUSTER', kafkaClusterChoices.join('\n'), 'Select the Kafka cluster')
+                    ))
+                }
+            }
+        }
+
         stage('Auto Approve Scripts') {
             steps {
                 build job: 'AutoApproveJob', wait: true
-            }
-        }
-
-        stage('Generate Kafka Cluster Choices') {
-            steps {
-                script {
-                    // Find all directories in the workspace for Kafka clusters
-                    def kafkaClusters = sh(script: "find . -maxdepth 1 -type d -name 'kafka-*' -exec basename {} \\;", returnStdout: true).trim().split('\n')
-                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters.join('\n')
-                }
-            }
-        }
-
-        stage('Set Parameters') {
-            steps {
-                script {
-                    def kafkaClusterChoices = readFile(KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
-                    properties([
-                        parameters([
-                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
-                            choice(name: 'KAFKA_CLUSTER', choices: kafkaClusterChoices.join('\n'), description: 'Select the Kafka cluster')
-                        ])
-                    ])
-                }
             }
         }
 
