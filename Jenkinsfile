@@ -105,10 +105,10 @@ pipeline {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
-                        def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
-                        def jsonFilePattern = "${jsonDirectory}/*.json"
+                        def jsonDirectory = "\${env.WORKSPACE}/\${kafkaCluster}/\${jiraKey}"
+                        def jsonFilePattern = "\${jsonDirectory}/*.json"
 
-                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                        def jsonFiles = sh(script: "ls \${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -141,9 +141,9 @@ for message in messages:
 producer.flush()
 '''
 
-                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
+                                sh "python kafka_producer.py \${topic} \"\$(cat messages.json)\" \${kafkaBroker}"
                             } else {
-                                error "File not found: ${jsonFile}"
+                                error "File not found: \${jsonFile}"
                             }
                         }
                     }
