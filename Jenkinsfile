@@ -1,39 +1,7 @@
 pipeline {
-    agent any
-
-    environment {
-        KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
-    }
-
-    parameters {
-        string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        string(name: 'KAFKA_CLUSTERS', defaultValue: 'kafka-cluster-platform,kafka-cluster-data', description: 'Comma-separated list of Kafka clusters')
-    }
-
-    stages {
-        stage('Generate Kafka Cluster Choices') {
-            steps {
-                script {
-                    // Generate choices from the provided KAFKA_CLUSTERS parameter
-                    def kafkaClusters = params.KAFKA_CLUSTERS?.split(',')?.collect { it.trim() }
-                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters.join('\n')
-                }
-            }
-        }
-
-        stage('Dynamic Pipeline') {
-            steps {
-                script {
-                    // Read the dynamically generated Kafka clusters
-                    def kafkaClusterChoices = readFile(env.KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
-                    def kafkaClusterChoicesFormatted = kafkaClusterChoices.join('\n')
-
-                    // Define the dynamic pipeline
-                    def dynamicPipeline = """
-pipeline {
     agent {
         kubernetes {
-            yaml \"""
+            yaml """
             apiVersion: v1
             kind: Pod
             spec:
@@ -53,13 +21,13 @@ pipeline {
                 env:
                 - name: TZ
                   value: "Asia/Jakarta"
-            \"""
+            """
         }
     }
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: '${kafkaClusterChoicesFormatted}', description: 'Select the Kafka cluster')
+        choice(name: 'KAFKA_CLUSTER', choices: ['kafka-cluster-platform', 'kafka-cluster-data'], description: 'Select the Kafka cluster')
     }
 
     stages {
@@ -103,11 +71,11 @@ pipeline {
                     script {
                         def kafkaCluster = params.KAFKA_CLUSTER
                         def jiraKey = env.JIRA_KEY
-                        def jsonDirectory = "\${env.WORKSPACE}/\${kafkaCluster}/\${jiraKey}"
-                        def jsonFilePattern = "\${jsonDirectory}/*.json"
+                        def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
+                        def jsonFilePattern = "${jsonDirectory}/*.json"
 
                         // Find all JSON files in the specified directory
-                        def jsonFiles = sh(script: "ls \${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -129,8 +97,8 @@ pipeline {
                                     kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
                                 }
 
-                                // Create the Python script file
-                                writeFile file: 'kafka_producer.py', text: '''
+                                // Create the Python script
+                                writeFile file: 'kafka_producer.py', text: """
 from kafka import KafkaProducer
 import json
 import sys
@@ -143,12 +111,12 @@ producer = KafkaProducer(bootstrap_servers=broker)
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
-'''
+"""
 
                                 // Run the Python script
-                                sh "python kafka_producer.py \${topic} \"\$(cat messages.json)\" \${kafkaBroker}"
+                                sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
                             } else {
-                                error "File not found: \${jsonFile}"
+                                error "File not found: ${jsonFile}"
                             }
                         }
                     }
@@ -166,25 +134,3 @@ producer.flush()
         }
     }
 }
-"""
-                    writeFile file: 'dynamic_pipeline.groovy', text: dynamicPipeline
-                    load 'dynamic_pipeline.groovy'
-                }
-            }
-        }
-    }
-
-    post {
-        success {
-            echo 'Pipeline executed successfully!'
-        }
-        failure {
-            echo 'Pipeline execution failed.'
-        }
-    }
-}
-"""
-
-### How to Use:
-1. **Update the Jenkinsfile** in your existing Jenkins job configuration with the provided script.
-2. **Run the pipeline**. When you run the pipeline, it will dynamically update the `KAFKA_CLUSTER` parameter choices based on the provided or default values and proceed with the rest of the pipeline stages using the Kubernetes agent configuration.
