@@ -1,43 +1,102 @@
 pipeline {
-    agent {
-        kubernetes {
-            yaml """
-            apiVersion: v1
-            kind: Pod
-            spec:
-              containers:
-              - name: python
-                image: python:3.9-slim
-                command:
-                - sh
-                - -c
-                - |
-                  apt-get update && apt-get install -y git tzdata
-                  cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
-                  echo "Asia/Jakarta" > /etc/timezone
-                  git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
-                  exec cat
-                tty: true
-                env:
-                - name: TZ
-                  value: "Asia/Jakarta"
-            """
-        }
+    agent any
+
+    environment {
+        KAFKA_CLUSTER_CHOICES_FILE = 'kafka_cluster_choices.txt'
     }
 
     parameters {
         string(name: 'JIRA_URL', description: 'Enter the JIRA URL')
-        choice(name: 'KAFKA_CLUSTER', choices: ['kafka-cluster-platform', 'kafka-cluster-data'], description: 'Select the Kafka cluster')
+        string(name: 'KAFKA_CLUSTERS', defaultValue: 'kafka-cluster-platform,kafka-cluster-data', description: 'Comma-separated list of Kafka clusters')
     }
 
     stages {
+        stage('Auto Approve Scripts') {
+            steps {
+                build job: 'AutoApproveJob', wait: true
+            }
+        }
+
+        stage('Generate Kafka Cluster Choices') {
+            steps {
+                script {
+                    def kafkaClusters = params.KAFKA_CLUSTERS?.split(',')?.collect { it.trim() }
+                    writeFile file: KAFKA_CLUSTER_CHOICES_FILE, text: kafkaClusters.join('\n')
+                }
+            }
+        }
+
+        stage('Read Kafka Cluster Choices') {
+            steps {
+                script {
+                    def kafkaClusterChoices = readFile(KAFKA_CLUSTER_CHOICES_FILE).split('\n').collect { it.trim() }
+                    properties([
+                        parameters([
+                            string(name: 'JIRA_URL', description: 'Enter the JIRA URL'),
+                            choice(name: 'KAFKA_CLUSTER', choices: kafkaClusterChoices.join('\n'), description: 'Select the Kafka cluster')
+                        ])
+                    ])
+                }
+            }
+        }
+
         stage('Clone Repository') {
+            agent {
+                kubernetes {
+                    yaml """
+                    apiVersion: v1
+                    kind: Pod
+                    spec:
+                      containers:
+                      - name: python
+                        image: python:3.9-slim
+                        command:
+                        - sh
+                        - -c
+                        - |
+                          apt-get update && apt-get install -y git tzdata
+                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+                          echo "Asia/Jakarta" > /etc/timezone
+                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
+                          exec cat
+                        tty: true
+                        env:
+                        - name: TZ
+                          value: "Asia/Jakarta"
+                    """
+                }
+            }
             steps {
                 git url: 'https://github.com/ongkyoktafian1/kafka-automate.git', branch: 'main'
             }
         }
 
         stage('Install Dependencies') {
+            agent {
+                kubernetes {
+                    yaml """
+                    apiVersion: v1
+                    kind: Pod
+                    spec:
+                      containers:
+                      - name: python
+                        image: python:3.9-slim
+                        command:
+                        - sh
+                        - -c
+                        - |
+                          apt-get update && apt-get install -y git tzdata
+                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+                          echo "Asia/Jakarta" > /etc/timezone
+                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
+                          exec cat
+                        tty: true
+                        env:
+                        - name: TZ
+                          value: "Asia/Jakarta"
+                    """
+                }
+            }
             steps {
                 container('python') {
                     sh 'pip install kafka-python'
@@ -46,6 +105,31 @@ pipeline {
         }
 
         stage('Add Git Exception') {
+            agent {
+                kubernetes {
+                    yaml """
+                    apiVersion: v1
+                    kind: Pod
+                    spec:
+                      containers:
+                      - name: python
+                        image: python:3.9-slim
+                        command:
+                        - sh
+                        - -c
+                        - |
+                          apt-get update && apt-get install -y git tzdata
+                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+                          echo "Asia/Jakarta" > /etc/timezone
+                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
+                          exec cat
+                        tty: true
+                        env:
+                        - name: TZ
+                          value: "Asia/Jakarta"
+                    """
+                }
+            }
             steps {
                 container('python') {
                     sh 'git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test'
@@ -54,10 +138,34 @@ pipeline {
         }
 
         stage('Extract JIRA Key') {
+            agent {
+                kubernetes {
+                    yaml """
+                    apiVersion: v1
+                    kind: Pod
+                    spec:
+                      containers:
+                      - name: python
+                        image: python:3.9-slim
+                        command:
+                        - sh
+                        - -c
+                        - |
+                          apt-get update && apt-get install -y git tzdata
+                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+                          echo "Asia/Jakarta" > /etc/timezone
+                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
+                          exec cat
+                        tty: true
+                        env:
+                        - name: TZ
+                          value: "Asia/Jakarta"
+                    """
+                }
+            }
             steps {
                 container('python') {
                     script {
-                        // Extract the JIRA key from the URL
                         def jiraKey = params.JIRA_URL.tokenize('/').last()
                         env.JIRA_KEY = jiraKey
                     }
@@ -66,6 +174,31 @@ pipeline {
         }
 
         stage('Publish to Kafka') {
+            agent {
+                kubernetes {
+                    yaml """
+                    apiVersion: v1
+                    kind: Pod
+                    spec:
+                      containers:
+                      - name: python
+                        image: python:3.9-slim
+                        command:
+                        - sh
+                        - -c
+                        - |
+                          apt-get update && apt-get install -y git tzdata
+                          cp /usr/share/zoneinfo/Asia/Jakarta /etc/localtime
+                          echo "Asia/Jakarta" > /etc/timezone
+                          git config --global --add safe.directory /home/jenkins/agent/workspace/ongky_test
+                          exec cat
+                        tty: true
+                        env:
+                        - name: TZ
+                          value: "Asia/Jakarta"
+                    """
+                }
+            }
             steps {
                 container('python') {
                     script {
@@ -74,8 +207,7 @@ pipeline {
                         def jsonDirectory = "${env.WORKSPACE}/${kafkaCluster}/${jiraKey}"
                         def jsonFilePattern = "${jsonDirectory}/*.json"
 
-                        // Find all JSON files in the specified directory
-                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\\n")
+                        def jsonFiles = sh(script: "ls ${jsonFilePattern}", returnStdout: true).trim().split("\n")
 
                         jsonFiles.each { jsonFile ->
                             if (fileExists(jsonFile)) {
@@ -83,13 +215,9 @@ pipeline {
                                 def topic = configData.topic
                                 def messages = configData.messages
 
-                                // Convert the messages array to a JSON string
                                 def messagesJson = new groovy.json.JsonBuilder(messages).toPrettyString()
-
-                                // Write the JSON string to the messages.json file
                                 writeFile file: 'messages.json', text: messagesJson
 
-                                // Determine the Kafka broker based on the selected Kafka cluster
                                 def kafkaBroker = ""
                                 if (kafkaCluster == "kafka-cluster-platform") {
                                     kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
@@ -97,8 +225,7 @@ pipeline {
                                     kafkaBroker = "kafka-1.platform.stg.ajaib.int:9092"
                                 }
 
-                                // Create the Python script
-                                writeFile file: 'kafka_producer.py', text: """
+                                writeFile file: 'kafka_producer.py', text: '''
 from kafka import KafkaProducer
 import json
 import sys
@@ -111,9 +238,8 @@ producer = KafkaProducer(bootstrap_servers=broker)
 for message in messages:
     producer.send(topic, value=message.encode('utf-8'))
 producer.flush()
-"""
+'''
 
-                                // Run the Python script
                                 sh "python kafka_producer.py ${topic} \"\$(cat messages.json)\" ${kafkaBroker}"
                             } else {
                                 error "File not found: ${jsonFile}"
