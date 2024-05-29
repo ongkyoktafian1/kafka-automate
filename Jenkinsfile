@@ -1,11 +1,12 @@
 node {
     def kafkaClusterChoicesFile = 'kafka_cluster_choices.txt'
+    def kafkaClusters = params.KAFKA_CLUSTERS ?: 'kafka-cluster-platform,kafka-cluster-data' // Default value if parameter is not provided
     def kafkaClusterChoices = ''
 
     try {
         stage('Generate Kafka Cluster Choices') {
             // Generate choices from the provided KAFKA_CLUSTERS parameter
-            def kafkaClusters = params.KAFKA_CLUSTERS.split(',').collect { it.trim() }
+            kafkaClusters = kafkaClusters.split(',').collect { it.trim() }
             kafkaClusterChoices = kafkaClusters.join('\n')
             writeFile file: kafkaClusterChoicesFile, text: kafkaClusterChoices
         }
