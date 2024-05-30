@@ -121,7 +121,7 @@ producer.flush()
                                 writeFile file: 'messages.json', text: messagesJson
 
                                 // Determine the Kafka broker based on the selected Kafka cluster
-                                def kafkaBroker = sh(script: "cat kafka-clusters/${kafkaCluster}", returnStdout: true).trim()
+                                def kafkaBroker = sh(script: "cat kafka-config/${kafkaCluster}", returnStdout: true).trim()
 
                                 // Run the Python script
                                 sh "python kafka_producer.py ${topic} \"${messagesJson.replace('"', '\\"')}\" ${kafkaBroker}"
