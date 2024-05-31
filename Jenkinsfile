@@ -88,9 +88,13 @@ import sys
 
 topic = sys.argv[1]
 messages = json.loads(sys.argv[2])
-broker = sys.argv[3]
+brokers = sys.argv[3].split(',')
 
-producer = KafkaProducer(bootstrap_servers=broker, value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+producer = KafkaProducer(
+    bootstrap_servers=brokers,  # brokers is a list of broker addresses
+    value_serializer=lambda v: json.dumps(v).encode('utf-8')
+)
+
 for message in messages:
     producer.send(topic, value=message)
 producer.flush()
@@ -120,11 +124,11 @@ producer.flush()
                                 // Write the JSON string to the messages.json file
                                 writeFile file: 'messages.json', text: messagesJson
 
-                                // Determine the Kafka broker based on the selected Kafka cluster
-                                def kafkaBroker = sh(script: "cat kafka-config/${kafkaCluster}", returnStdout: true).trim()
+                                // Determine the Kafka brokers based on the selected Kafka cluster
+                                def kafkaBrokers = sh(script: "cat kafka-config/${kafkaCluster} | tr '\\n' ',' | sed 's/,\$//'", returnStdout: true).trim()
 
                                 // Run the Python script
-                                sh "python kafka_producer.py ${topic} \"${messagesJson.replace('"', '\\"')}\" ${kafkaBroker}"
+                                sh "python kafka_producer.py ${topic} \"${messagesJson.replace('"', '\\"')}\" ${kafkaBrokers}"
                             } else {
                                 error "File not found: ${jsonFile}"
                             }
